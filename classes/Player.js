@@ -132,6 +132,7 @@ class Player {
     this.isInvincible = false
     this.elapsedInvincibilityTime = 0
     this.invincibilityInterval = 0.8
+    this.canMove = true
   }
 
   receiveHit() {
@@ -319,6 +320,13 @@ class Player {
   handleInput(keys) {
     this.velocity.x = 0
     this.velocity.y = 0
+
+    // If movement is disabled (for example while a dialog is open), skip input
+    if (!this.canMove) {
+      this.velocity.x = 0
+      this.velocity.y = 0
+      return
+    }
 
     if (this.isAttacking) return
 

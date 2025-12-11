@@ -139,8 +139,8 @@ const renderStaticLayers = async (layersData) => {
 
 // Change xy coordinates to move player's default position
 const player = new Player({
-  x: 100,
-  y: 100,
+  x: 161,
+  y: 128,
   size: 15,
 })
 
@@ -238,6 +238,12 @@ const keys = {
   },
 }
 
+// NPCs and dialog state
+let npcs = []
+let dialogOpen = false
+let activeNpc = null
+let dialogIndex = 0
+
 let lastTime = performance.now()
 let frontRendersCanvas
 const hearts = [
@@ -309,6 +315,12 @@ function animate(backgroundCanvas) {
   c.translate(-horizontalScrollDistance, -verticalScrollDistance)
   c.clearRect(0, 0, canvas.width, canvas.height)
   c.drawImage(backgroundCanvas, 0, 0)
+  // draw NPCs (they were previously part of a static layer)
+  for (const npc of npcs) {
+    npc.draw(c)
+  }
+
+  // draw player after NPCs so player appears in front
   player.draw(c)
 
   // render out our monsters
@@ -417,6 +429,11 @@ function animate(backgroundCanvas) {
   })
   c.restore()
 
+  // HUD: dialog box
+  if (dialogOpen && activeNpc) {
+    renderDialogBox(c, activeNpc.getDialog(dialogIndex) || '')
+  }
+
   requestAnimationFrame(() => animate(backgroundCanvas))
 }
 
@@ -429,10 +446,114 @@ const startRendering = async () => {
       return
     }
 
+    // Create NPCs from the `l_Characters` grid using the characters tileset
+    try {
+      const charactersImage = await loadImage('./images/characters.png')
+
+      const defaultDialogs = {
+        2: ['Welcome, this is the village owned by Jiyun'],
+        4: ["I'm tending the garden."],
+        5: ["Lovely day, isn't it?"],
+        6: ["I lost something around here."],
+        7: ['Stay safe, traveler.'],
+      }
+
+      l_Characters.forEach((row, y) => {
+        row.forEach((symbol, x) => {
+          if (symbol !== 0) {
+            npcs.push(
+              new NPC({
+                x: x * 16,
+                y: y * 16,
+                tileIndex: symbol,
+                tileSize: 16,
+                image: charactersImage,
+                dialogues: defaultDialogs[symbol] || ['...'],
+              })
+            )
+          }
+        })
+      })
+    } catch (err) {
+      console.warn('Could not load characters image for NPCs', err)
+    }
+
+    // Dialog input handling (E to talk/advance, Escape to close)
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyE') {
+        if (dialogOpen) {
+          dialogIndex++
+          if (dialogIndex >= (activeNpc?.dialogues?.length || 0)) {
+            dialogOpen = false
+            activeNpc = null
+            dialogIndex = 0
+            player.canMove = true
+          }
+        } else {
+          for (const npc of npcs) {
+            if (npc.isNear(player, 28)) {
+              dialogOpen = true
+              activeNpc = npc
+              dialogIndex = 0
+              player.canMove = false
+              break
+            }
+          }
+        }
+      } else if (e.code === 'Escape' && dialogOpen) {
+        dialogOpen = false
+        activeNpc = null
+        dialogIndex = 0
+        player.canMove = true
+      }
+    })
+
     animate(backgroundCanvas)
   } catch (error) {
     console.error('Error during rendering:', error)
   }
+}
+
+// Render a simple dialog box in HUD space (viewport coordinates)
+function renderDialogBox(ctx, text) {
+  if (!text) return
+  ctx.save()
+  ctx.scale(MAP_SCALE, MAP_SCALE)
+  const padding = 12
+  const boxW = VIEWPORT_WIDTH - 40
+  const boxH = 110
+  const x = 20
+  const y = VIEWPORT_HEIGHT - boxH - 20
+
+  ctx.globalAlpha = 0.95
+  ctx.fillStyle = '#111'
+  ctx.fillRect(x, y, boxW, boxH)
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = 2
+  ctx.strokeRect(x, y, boxW, boxH)
+
+  ctx.fillStyle = '#fff'
+  ctx.font = '14px sans-serif'
+  wrapText(ctx, text, x + padding, y + 24, boxW - padding * 2, 18)
+
+  ctx.restore()
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ')
+  let line = ''
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' '
+    const metrics = ctx.measureText(testLine)
+    if (metrics.width > maxWidth && n > 0) {
+      ctx.fillText(line, x, y)
+      line = words[n] + ' '
+      y += lineHeight
+    } else {
+      line = testLine
+    }
+  }
+  ctx.fillText(line, x, y)
 }
 
 startRendering()
