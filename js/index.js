@@ -32,7 +32,6 @@ const layersData = {
   l_Landscape_Decorations_2: l_Landscape_Decorations_2,
   l_Houses: l_Houses,
   l_House_Decorations: l_House_Decorations,
-  l_Characters: l_Characters,
   l_Collisions: l_Collisions,
 }
 
@@ -244,6 +243,11 @@ let dialogOpen = false
 let activeNpc = null
 let dialogIndex = 0
 
+// Dialog box image (optional) - loaded during startRendering
+let dialogBoxImage = null
+// Dialog/talk sound (plays when dialog opens or advances)
+let dialogSound = null
+
 let lastTime = performance.now()
 let frontRendersCanvas
 const hearts = [
@@ -317,6 +321,7 @@ function animate(backgroundCanvas) {
   c.drawImage(backgroundCanvas, 0, 0)
   // draw NPCs (they were previously part of a static layer)
   for (const npc of npcs) {
+    npc.update(deltaTime)
     npc.draw(c)
   }
 
@@ -342,20 +347,51 @@ function animate(backgroundCanvas) {
       player.hasHitEnemy = true
 
       if (monster.health <= 0) {
-        pickups.push(
-          new Drop({
-            x: monster.x,
-            y: monster.y,
-            imageSrc: './images/python.png',
-            width: 24,
-            height: 24,
-            velocity: { x: 0, y: 0 }, 
-            collectDelay: 0.25,
-            lifeTime: 30
-          })
-        )
-        monsters.splice(i, 1)
-        continue
+          // Choose a random drop among R, Py, JS
+          const dropChoices = [
+            { imageSrc: './images/R_drop.png' },
+            { imageSrc: './images/Py_drop.png' },
+            { imageSrc: './images/JS_drop.png' },
+          ]
+          const choice = dropChoices[Math.floor(Math.random() * dropChoices.length)]
+
+          pickups.push(
+            new Drop({
+              x: monster.x,
+              y: monster.y,
+              imageSrc: choice.imageSrc,
+              width: 24,
+              height: 24,
+              velocity: { x: 0, y: 0 },
+              collectDelay: 0.25,
+              lifeTime: 30,
+            })
+          )
+
+          // Schedule a respawn at the monster's original position after a delay
+          const respawnDelayMs = 10 * 1000 // 10 seconds; change as needed
+          const originalPos = monster.originalPosition || { x: monster.x, y: monster.y }
+          const imageSrc = monster.image?.src || './images/bamboo.png'
+          setTimeout(() => {
+            try {
+              monsters.push(
+                new Monster({
+                  x: originalPos.x,
+                  y: originalPos.y,
+                  size: monster.width || 15,
+                  imageSrc: imageSrc,
+                  sprites: monsterSprites,
+                  health: monster.health || 3,
+                })
+              )
+            } catch (err) {
+              console.error('Failed to respawn monster', err)
+            }
+          }, respawnDelayMs)
+
+          // Remove the dead monster immediately so it no longer updates/renders
+          monsters.splice(i, 1)
+          continue
       }
     }
 
@@ -446,56 +482,148 @@ const startRendering = async () => {
       return
     }
 
-    // Create NPCs from the `l_Characters` grid using the characters tileset
+    // Try to preload a decorative dialogue box image; if unavailable, we'll
+    // simply render the fallback rectangle. This improves visuals when the
+    // asset is present but doesn't block startup if absent.
     try {
-      const charactersImage = await loadImage('./images/characters.png')
-
-      const defaultDialogs = {
-        2: ['Welcome, this is the village owned by Jiyun'],
-        4: ["I'm tending the garden."],
-        5: ["Lovely day, isn't it?"],
-        6: ["I lost something around here."],
-        7: ['Stay safe, traveler.'],
+      // Try images first (common place), then fall back to the font/ folder
+      // where your project keeps the provided asset.
+      try {
+        dialogBoxImage = await loadImage('./images/dialoguebox.png')
+      } catch (errImg) {
+        try {
+          dialogBoxImage = await loadImage('./font/dialoguebox.png')
+        } catch (errFont) {
+          console.warn('Dialogue box image not loaded from images/ or font/', errFont)
+          dialogBoxImage = null
+        }
       }
-
-      l_Characters.forEach((row, y) => {
-        row.forEach((symbol, x) => {
-          if (symbol !== 0) {
-            npcs.push(
-              new NPC({
-                x: x * 16,
-                y: y * 16,
-                tileIndex: symbol,
-                tileSize: 16,
-                image: charactersImage,
-                dialogues: defaultDialogs[symbol] || ['...'],
-              })
-            )
-          }
-        })
-      })
     } catch (err) {
-      console.warn('Could not load characters image for NPCs', err)
+      console.warn('Unexpected error loading dialogue box image', err)
+      dialogBoxImage = null
+    }
+
+    // Preload dialog/talk sound so we can play it when opening/advancing dialog
+    try {
+      dialogSound = new Audio('./sound/talk.wav')
+      dialogSound.preload = 'auto'
+      dialogSound.volume = (typeof window !== 'undefined' && window.SFX_VOLUME !== undefined) ? window.SFX_VOLUME : 0.6
+      dialogSound.load()
+    } catch (err) {
+      console.warn('Dialog sound could not be loaded', err)
+      dialogSound = null
+    }
+
+    // Create NPCs using explicit per-NPC definitions if available (data/npcs.js)
+    try {
+      if (window.NPC_DEFS && Array.isArray(window.NPC_DEFS)) {
+        for (const def of window.NPC_DEFS) {
+          // convert tile coords to world coords if provided
+          const x = def.x !== undefined ? def.x : (def.tileX !== undefined ? def.tileX * 16 : 0)
+          const y = def.y !== undefined ? def.y : (def.tileY !== undefined ? def.tileY * 16 : 0)
+          npcs.push(
+            new NPC({
+              x,
+              y,
+              imageSrc: def.sprite || def.imageSrc || './images/characters.png',
+              width: def.width || 16,
+              height: def.height || 16,
+              speed: def.speed || 18,
+              patrol: def.patrol || null,
+              dialogues: def.dialogues || ['...'],
+              spriteConfig: def.spriteConfig || null,
+            })
+          )
+        }
+      } else {
+        // Fallback: create NPCs from l_Characters using sprite mapping
+        const spriteMap = {
+          2: './images/villager_2.png',
+          4: './images/villager_4.png',
+          6: './images/villager_6.png',
+          7: './images/villager_7.png',
+        }
+
+        const defaultDialogs = {
+          2: ['Welcome, this is the village owned by Jiyun'],
+          4: ["I'm tending the garden."],
+          5: ["Lovely day, isn't it?"],
+          6: ["I lost something around here."],
+          7: ['Stay safe, traveler.'],
+        }
+
+        for (let y = 0; y < l_Characters.length; y++) {
+          const row = l_Characters[y]
+          for (let x = 0; x < row.length; x++) {
+            const symbol = row[x]
+            if (symbol !== 0) {
+              const px = x * 16
+              const py = y * 16
+              const src = spriteMap[symbol] || './images/characters.png'
+
+              const patrol = spriteMap[symbol]
+                ? [{ x: px, y: py }, { x: px + 48, y: py }]
+                : null
+
+              npcs.push(
+                new NPC({
+                  x: px,
+                  y: py,
+                  imageSrc: src,
+                  width: 16,
+                  height: 16,
+                  speed: 18,
+                  patrol,
+                  dialogues: defaultDialogs[symbol] || ['...'],
+                })
+              )
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Could not create NPCs', err)
     }
 
     // Dialog input handling (E to talk/advance, Escape to close)
     window.addEventListener('keydown', (e) => {
       if (e.code === 'KeyE') {
         if (dialogOpen) {
-          dialogIndex++
-          if (dialogIndex >= (activeNpc?.dialogues?.length || 0)) {
-            dialogOpen = false
-            activeNpc = null
-            dialogIndex = 0
-            player.canMove = true
-          }
-        } else {
+            // Advance dialog only if there is another line; play sound only when
+            // moving to the next line. If advancing would close the dialog, do
+            // not play the sound and just close.
+            const nextIndex = dialogIndex + 1
+            const total = activeNpc?.dialogues?.length || 0
+            if (nextIndex < total) {
+              try {
+                if (dialogSound) {
+                  dialogSound.currentTime = 0
+                  dialogSound.play()
+                }
+              } catch (err) {}
+              dialogIndex = nextIndex
+            } else {
+              dialogOpen = false
+              if (activeNpc) activeNpc.isTalking = false
+              activeNpc = null
+              dialogIndex = 0
+              player.canMove = true
+            }
+          } else {
           for (const npc of npcs) {
             if (npc.isNear(player, 28)) {
               dialogOpen = true
+              // play dialog open sound
+              try {
+                if (dialogSound) {
+                  dialogSound.currentTime = 0
+                  dialogSound.play()
+                }
+              } catch (err) {}
               activeNpc = npc
               dialogIndex = 0
               player.canMove = false
+              if (activeNpc) activeNpc.isTalking = true
               break
             }
           }
@@ -505,8 +633,36 @@ const startRendering = async () => {
         activeNpc = null
         dialogIndex = 0
         player.canMove = true
+        // unfreeze any npc that was talking
+        for (const npc of npcs) npc.isTalking = false
       }
     })
+
+    // Start background music (looping). If autoplay is blocked by browser,
+    // attach a user gesture listener to start playback on first interaction.
+    try {
+      const bgm = new Audio('./sound/background.ogg')
+      bgm.loop = true
+      bgm.volume = 0.5
+      bgm.preload = 'auto'
+      // Try to play immediately; if browser blocks it, wait for user gesture
+      const playPromise = bgm.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          const startOnGesture = () => {
+            bgm.play().catch(() => {})
+            window.removeEventListener('pointerdown', startOnGesture)
+            window.removeEventListener('keydown', startOnGesture)
+          }
+          window.addEventListener('pointerdown', startOnGesture)
+          window.addEventListener('keydown', startOnGesture)
+        })
+      }
+      // expose for debugging/control
+      window.backgroundMusic = bgm
+    } catch (err) {
+      console.warn('Background music could not be loaded', err)
+    }
 
     animate(backgroundCanvas)
   } catch (error) {
@@ -519,22 +675,75 @@ function renderDialogBox(ctx, text) {
   if (!text) return
   ctx.save()
   ctx.scale(MAP_SCALE, MAP_SCALE)
-  const padding = 12
+  const padding = 14
   const boxW = VIEWPORT_WIDTH - 40
-  const boxH = 110
+  // Tweak these values to control vertical spacing inside the dialog box
+  const paddingTop = 28 // increase to move text further down from the top
+  const paddingBottom = 8
+  // Reduce box height to decrease the space below the text; keep >= paddingTop + at least one line
+  const boxH = 90
   const x = 20
   const y = VIEWPORT_HEIGHT - boxH - 20
-
   ctx.globalAlpha = 0.95
-  ctx.fillStyle = '#111'
-  ctx.fillRect(x, y, boxW, boxH)
-  ctx.strokeStyle = '#fff'
-  ctx.lineWidth = 2
-  ctx.strokeRect(x, y, boxW, boxH)
 
-  ctx.fillStyle = '#fff'
-  ctx.font = '14px sans-serif'
-  wrapText(ctx, text, x + padding, y + 24, boxW - padding * 2, 18)
+  if (dialogBoxImage) {
+    // Draw with a nine-slice (scale center, preserve corners)
+    const sw = dialogBoxImage.width
+    const sh = dialogBoxImage.height
+    // Choose a border size that fits both source and destination
+    const border = Math.max(4, Math.min(16, Math.floor(Math.min(sw, sh) / 6), Math.floor(boxW / 6), Math.floor(boxH / 6)))
+
+    const sx = [0, border, sw - border]
+    const sy = [0, border, sh - border]
+    const sws = [border, sw - border * 2, border]
+    const shs = [border, sh - border * 2, border]
+
+    const dx = [x, x + border, x + boxW - border]
+    const dy = [y, y + border, y + boxH - border]
+    const dws = [border, Math.max(0, boxW - border * 2), border]
+    const dhs = [border, Math.max(0, boxH - border * 2), border]
+
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const sxx = sx[col]
+        const syy = sy[row]
+        const sww = sws[col]
+        const shh = shs[row]
+        const dxx = dx[col]
+        const dyy = dy[row]
+        const dww = dws[col]
+        const dhh = dhs[row]
+        // Only draw if both source and destination areas are positive
+        if (sww > 0 && shh > 0 && dww > 0 && dhh > 0) {
+          try {
+            ctx.drawImage(dialogBoxImage, sxx, syy, sww, shh, dxx, dyy, dww, dhh)
+          } catch (err) {
+            // If drawImage fails for any reason, fall back to simple rectangle
+            console.warn('Dialog drawImage failed, falling back', err)
+            ctx.fillStyle = '#111'
+            ctx.fillRect(x, y, boxW, boxH)
+            ctx.strokeStyle = '#fff'
+            ctx.lineWidth = 2
+            ctx.strokeRect(x, y, boxW, boxH)
+            row = 3
+            col = 3
+          }
+        }
+      }
+    }
+  } else {
+    ctx.fillStyle = '#111'
+    ctx.fillRect(x, y, boxW, boxH)
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.strokeRect(x, y, boxW, boxH)
+  }
+
+  // Use black text for better contrast with the dialogue art
+  ctx.fillStyle = '#000'
+  ctx.font = '14px PixelFont'
+  // Start text at y + paddingTop so you can control the top gap
+  wrapText(ctx, text, x + padding, y + paddingTop, boxW - padding * 2, 16)
 
   ctx.restore()
 }
@@ -556,4 +765,19 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   ctx.fillText(line, x, y)
 }
 
-startRendering()
+// Ensure the PixelFont is loaded before starting rendering so dialog text
+// appears with the intended bitmap font. Fall back to starting immediately
+// if the Font Loading API is not available or loading fails.
+if (document.fonts && document.fonts.load) {
+  document.fonts
+    .load('14px PixelFont')
+    .then(() => {
+      startRendering()
+    })
+    .catch(() => {
+      // If font fails to load for any reason, start anyway.
+      startRendering()
+    })
+} else {
+  startRendering()
+}

@@ -28,6 +28,28 @@ class Player {
     }
     this.weaponSprite.src = './images/lance.png'
 
+    // Attack sound
+    try {
+      this.attackSound = new Audio('./sound/attack.wav')
+      this.attackSound.preload = 'auto'
+      // Use a global SFX volume if provided, otherwise default to 0.6
+      this.attackSound.volume = (typeof window !== 'undefined' && window.SFX_VOLUME !== undefined) ? window.SFX_VOLUME : 0.6
+      this.attackSound.load()
+    } catch (e) {
+      this.attackSound = null
+    }
+
+    // Bump/hurt sound (played when player is hit by a monster)
+    try {
+      this.bumpSound = new Audio('./sound/bumped.wav')
+      this.bumpSound.preload = 'auto'
+      // Use the same global SFX volume as attack sound, default a bit lower
+      this.bumpSound.volume = (typeof window !== 'undefined' && window.SFX_VOLUME !== undefined) ? window.SFX_VOLUME : 0.6
+      this.bumpSound.load()
+    } catch (e) {
+      this.bumpSound = null
+    }
+
     this.currentFrame = 0
     this.elapsedTime = 0
     this.sprites = {
@@ -139,6 +161,15 @@ class Player {
     if (this.isInvincible) return
 
     this.isInvincible = true
+    // Play bump/hurt sound if available
+    try {
+      if (this.bumpSound) {
+        this.bumpSound.currentTime = 0
+        this.bumpSound.play()
+      }
+    } catch (e) {
+      // ignore play errors (file missing or autoplay restrictions)
+    }
   }
 
   switchBackToIdleState() {
@@ -176,6 +207,16 @@ class Player {
 
     this.currentFrame = 0
     this.isAttacking = true
+
+    // Play attack sound (if available)
+    try {
+      if (this.attackSound) {
+        this.attackSound.currentTime = 0
+        this.attackSound.play()
+      }
+    } catch (e) {
+      // ignore play errors (file missing or not allowed)
+    }
   }
 
   draw(c) {

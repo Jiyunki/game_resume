@@ -3,8 +3,11 @@ class Drop {
     x,
     y,
     imageSrc,
-    width = 16,
-    height = 16,
+    // If width/height are omitted (null), we'll auto-size from the image
+    // using `scale`. If one is provided and the other omitted, we preserve aspect ratio.
+    width = null,
+    height = null,
+    scale = 0.6,
     velocity = { x: 0, y: 0 }, // px/sec
     collectDelay = 0.25, // seconds
     lifeTime = 30, // seconds before auto-remove/fade
@@ -13,6 +16,7 @@ class Drop {
     this.y = y
     this.width = width
     this.height = height
+    this.scale = scale
     this.velocity = velocity
     this.collectDelay = collectDelay
     this.collectElapsed = 0
@@ -24,7 +28,27 @@ class Drop {
 
     this.image = new Image()
     this.loaded = false
-    this.image.onload = () => { this.loaded = true }
+    this.image.onload = () => {
+      this.loaded = true
+      // If width/height were not provided, auto-compute using natural size and scale
+      try {
+        const iw = this.image.naturalWidth || this.image.width
+        const ih = this.image.naturalHeight || this.image.height
+        if (!this.width && !this.height) {
+          this.width = Math.max(1, Math.round(iw * this.scale))
+          this.height = Math.max(1, Math.round(ih * this.scale))
+        } else if (this.width && !this.height) {
+          // preserve aspect ratio
+          this.height = Math.max(1, Math.round((this.width * ih) / iw))
+        } else if (!this.width && this.height) {
+          this.width = Math.max(1, Math.round((this.height * iw) / ih))
+        }
+      } catch (e) {
+        // fallback to defaults if something goes wrong
+        if (!this.width) this.width = 16
+        if (!this.height) this.height = 16
+      }
+    }
     this.image.onerror = (e) => { console.error('Drop image failed to load:', imageSrc, e) }
     this.image.src = imageSrc
   }
