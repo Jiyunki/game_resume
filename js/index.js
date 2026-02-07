@@ -1,9 +1,18 @@
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
-const dpr = window.devicePixelRatio || 1
 
-canvas.width = 1024 * dpr
-canvas.height = 576 * dpr
+let dpr = window.devicePixelRatio || 1
+
+// Use a fixed internal logical resolution for the game and let CSS scale it
+// for display. This avoids offset issues while keeping crisp scaling via DPR.
+function setCanvasResolution() {
+  dpr = window.devicePixelRatio || 1
+  canvas.width = 1024 * dpr
+  canvas.height = 576 * dpr
+}
+
+// Initialize canvas internal resolution
+setCanvasResolution()
 
 const MAP_ROWS = 28
 const MAP_COLS = 28
@@ -11,16 +20,18 @@ const MAP_COLS = 28
 const MAP_WIDTH = 16 * MAP_COLS
 const MAP_HEIGHT = 16 * MAP_ROWS
 
-const MAP_SCALE = dpr + 3
+// These values depend on `dpr` and `canvas` size; make mutable so we can
+// recompute them when the window is resized.
+let MAP_SCALE = dpr + 3
 
-const VIEWPORT_WIDTH = canvas.width / MAP_SCALE
-const VIEWPORT_HEIGHT = canvas.height / MAP_SCALE
+let VIEWPORT_WIDTH = canvas.width / MAP_SCALE
+let VIEWPORT_HEIGHT = canvas.height / MAP_SCALE
 
-const VIEWPORT_CENTER_X = VIEWPORT_WIDTH / 2
-const VIEWPORT_CENTER_Y = VIEWPORT_HEIGHT / 2
+let VIEWPORT_CENTER_X = VIEWPORT_WIDTH / 2
+let VIEWPORT_CENTER_Y = VIEWPORT_HEIGHT / 2
 
-const MAX_SCROLL_X = MAP_WIDTH - VIEWPORT_WIDTH
-const MAX_SCROLL_Y = MAP_HEIGHT - VIEWPORT_HEIGHT
+let MAX_SCROLL_X = MAP_WIDTH - VIEWPORT_WIDTH
+let MAX_SCROLL_Y = MAP_HEIGHT - VIEWPORT_HEIGHT
 
 const layersData = {
   l_Terrain: l_Terrain,
@@ -249,7 +260,21 @@ let dialogBoxImage = null
 let dialogSound = null
 
 let lastTime = performance.now()
-let frontRendersCanvas
+let backgroundCanvas = null
+let frontRendersCanvas = null
+
+function updateViewportMetrics() {
+  MAP_SCALE = dpr + 3
+  VIEWPORT_WIDTH = canvas.width / MAP_SCALE
+  VIEWPORT_HEIGHT = canvas.height / MAP_SCALE
+  VIEWPORT_CENTER_X = VIEWPORT_WIDTH / 2
+  VIEWPORT_CENTER_Y = VIEWPORT_HEIGHT / 2
+  MAX_SCROLL_X = MAP_WIDTH - VIEWPORT_WIDTH
+  MAX_SCROLL_Y = MAP_HEIGHT - VIEWPORT_HEIGHT
+}
+
+// Set initial viewport metrics
+updateViewportMetrics()
 const hearts = [
   new Heart({
     x: 10,
@@ -278,7 +303,7 @@ const leafs = [
 
 let elapsedTime = 0
 
-function animate(backgroundCanvas) {
+function animate() {
   // Calculate delta time
   const currentTime = performance.now()
   const deltaTime = (currentTime - lastTime) / 1000
@@ -470,12 +495,12 @@ function animate(backgroundCanvas) {
     renderDialogBox(c, activeNpc.getDialog(dialogIndex) || '')
   }
 
-  requestAnimationFrame(() => animate(backgroundCanvas))
+  requestAnimationFrame(animate)
 }
 
 const startRendering = async () => {
   try {
-    const backgroundCanvas = await renderStaticLayers(layersData)
+    backgroundCanvas = await renderStaticLayers(layersData)
     frontRendersCanvas = await renderStaticLayers(frontRendersLayersData)
     if (!backgroundCanvas) {
       console.error('Failed to create the background canvas')
@@ -664,11 +689,36 @@ const startRendering = async () => {
       console.warn('Background music could not be loaded', err)
     }
 
-    animate(backgroundCanvas)
+    animate()
   } catch (error) {
     console.error('Error during rendering:', error)
   }
 }
+
+// Only re-render static layers when devicePixelRatio changes (e.g. zoom, display
+// changes). CSS will handle the visual scaling for normal window resizes.
+let _resizeTimeout = null
+async function handleResize() {
+  const newDpr = window.devicePixelRatio || 1
+  if (newDpr !== dpr) {
+    // DPR changed -> update internal resolution and re-render static layers
+    setCanvasResolution()
+    updateViewportMetrics()
+    try {
+      backgroundCanvas = await renderStaticLayers(layersData)
+      frontRendersCanvas = await renderStaticLayers(frontRendersLayersData)
+    } catch (err) {
+      console.error('Failed to re-render static layers on DPR change', err)
+    }
+  }
+}
+
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimeout)
+  _resizeTimeout = setTimeout(() => {
+    handleResize()
+  }, 150)
+})
 
 // Render a simple dialog box in HUD space (viewport coordinates)
 function renderDialogBox(ctx, text) {
