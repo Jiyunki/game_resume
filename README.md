@@ -14,17 +14,11 @@ git clone https://github.com/Jiyungi/gamed_resume.git
 cd gamed_resume
 ```
 
-2. Open the project in VS Code:
+2. Or, Download Zip file and open the project in VS Code:
 
-If you have the `code` command available, run:
+  Open VS Code and choose `File > Open...` and select the `gamed_resume` folder.
 
-```bash
-code .
-```
-
-If not, open VS Code and choose `File > Open...` and select the `gamed_resume` folder.
-
-3. Serve the project locally (two easy options):
+3. Run the project locally (two easy options):
 
 - Option A — Live Server (recommended for beginners):
   - Install the **Live Server** extension in VS Code (Extensions view ▶ search "Live Server").
