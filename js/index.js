@@ -254,6 +254,29 @@ let dialogOpen = false
 let activeNpc = null
 let dialogIndex = 0
 
+// Game state
+let isGameOver = false
+
+function showGameOver() {
+  if (isGameOver) return
+  isGameOver = true
+  try { player.canMove = false } catch (e) {}
+  try { if (window.backgroundMusic) window.backgroundMusic.pause() } catch (e) {}
+  const overlay = document.getElementById('game-over')
+  if (overlay) {
+    overlay.style.display = 'flex'
+    const btn = document.getElementById('restart-button')
+    if (btn) {
+      btn.focus()
+      btn.addEventListener('click', () => {
+        // simple restart by reloading the page
+        window.location.reload()
+      })
+    }
+  }
+}
+window.showGameOver = showGameOver
+
 // Dialog box image (optional) - loaded during startRendering
 let dialogBoxImage = null
 // Dialog/talk sound (plays when dialog opens or advances)
@@ -435,8 +458,9 @@ function animate() {
         filledHearts[filledHearts.length - 1].currentFrame = 0
       }
 
-      if (filledHearts.length <= 1) {
-        console.log('game over')
+      const remaining = hearts.filter((heart) => heart.currentFrame === 4).length
+      if (remaining === 0) {
+        showGameOver()
       }
     }
   }
@@ -815,19 +839,21 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   ctx.fillText(line, x, y)
 }
 
-// Ensure the PixelFont is loaded before starting rendering so dialog text
-// appears with the intended bitmap font. Fall back to starting immediately
-// if the Font Loading API is not available or loading fails.
-if (document.fonts && document.fonts.load) {
-  document.fonts
-    .load('14px PixelFont')
-    .then(() => {
-      startRendering()
-    })
-    .catch(() => {
-      // If font fails to load for any reason, start anyway.
-      startRendering()
-    })
-} else {
-  startRendering()
+// Expose an init function so the game only starts after a user gesture
+// (e.g. clicking a Start button). This prevents autoplay issues and gives
+// us a place to wait for the font to load before beginning rendering.
+window.initGame = function initGame() {
+  if (document.fonts && document.fonts.load) {
+    document.fonts
+      .load('14px PixelFont')
+      .then(() => {
+        startRendering()
+      })
+      .catch(() => {
+        // If font fails to load for any reason, start anyway.
+        startRendering()
+      })
+  } else {
+    startRendering()
+  }
 }
