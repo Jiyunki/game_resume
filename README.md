@@ -10,7 +10,7 @@ Please Install VS Code before you clone this repository
 1. Clone the repository to your vs code:
 
 ```bash
-git clone https://github.com/<your-username>/gamed_resume.git
+git clone https://github.com/Jiyungi/gamed_resume.git
 cd gamed_resume
 ```
 
