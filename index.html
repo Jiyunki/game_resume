@@ -76,7 +76,7 @@
     animation: titlePop 560ms cubic-bezier(.2,.9,.3,1) 180ms both;
   }
 
-  #start-screen p { margin-bottom: 18px; }
+  #start-screen p { margin-bottom: 18px; line-height: 1.6; }
 
   #start-button {
     background: #fff;
@@ -187,31 +187,85 @@
     border: 2px solid rgba(0,0,0,0.05);
     margin-top: 8px;
   }
+  /* Game complete overlay (shown when completion conditions met) */
+  #game-complete {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.72);
+    z-index: 10000;
+    font-family: PixelFont, sans-serif;
+    color: #fff;
+  }
+
+  #game-complete .panel {
+    background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.3));
+    border: 2px solid rgba(255,255,255,0.08);
+    padding: 28px;
+    text-align: center;
+    color: #fff;
+    max-width: 520px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    border-radius: 8px;
+  }
+
+  #game-complete h2 { font-size: 28px; margin-bottom: 12px }
+  #complete-restart-button {
+    background: #fff;
+    color: #000;
+    padding: 10px 18px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 2px solid rgba(0,0,0,0.05);
+    margin-top: 8px;
+  }
 </style>
 <canvas style="image-rendering: pixelated"></canvas>
 
-<!-- Resume icon: update href to your resume file or external URL -->
+<!-- Resume icon: update href to resume file or external URL -->
 <a id="resume-link" href="./resume.pdf" target="_blank" rel="noopener noreferrer" aria-label="Open resume" title="Open resume">
   <img src="./images/Book.png" alt="Open resume">
 </a>
 
 <div id="start-screen" role="dialog" aria-modal="true" aria-labelledby="start-title">
   <div class="panel">
-    <h1 id="start-title">Jiyun's Game</h1>
-    <p>Use WASD or arrow keys to move. Press Space to attack. Press E to talk.</p>
-    <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
-      <button id="start-button" class="pulse" aria-label="Start game">Start</button>
-      <small style="opacity:.8;color:#ddd;">or Press Enter</small>
-    </div>
+      <h1 id="start-title">Jiyun's Resume Game</h1>
+      
+        <p>Welcome to the game!</p>
+        <p>This game is an interactive resume, so the monster, the items that are dropped by the monsters, and the dialogue with the NPCs represent my experience.</p>
+        <p><strong>To Move:</strong> Use WASD or arrow keys</p>
+        <p><strong>To Attack:</strong> Press Space</p>
+      <p><strong>To Talk to NPCs:</strong> Press E</p>
+      <p style="margin-top:6px;"> <strong>Goal:</strong> Talk to all four characters you find on the map without being killed by the monster, and try to discover three different items that can be found when you defeat the monster.</p>
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
+        <button id="start-button" class="pulse" aria-label="Start game">Start</button>
+        <small style="opacity:.8;color:#ddd;">or press Enter to start</small>
+      </div>
   </div>
 </div>
 <!-- Game over overlay - initially hidden -->
 <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
   <div class="panel">
     <h2 id="game-over-title">Game Over</h2>
-    <p>Your character has run out of hearts.</p>
+    <p>Your have run out of hearts.</p>
     <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
       <button id="restart-button" aria-label="Start again">Start again</button>
+    </div>
+  </div>
+</div>
+<!-- Completion overlay - shown when player has talked to all required NPCs and collected items -->
+<div id="game-complete" role="dialog" aria-modal="true" aria-labelledby="game-complete-title">
+  <div class="panel">
+    <h2 id="game-complete-title">Congratulations!</h2>
+    <p>You've talked to the villagers and found the three items.</p>
+    <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
+      <button id="complete-restart-button" aria-label="Play again">Play again</button>
     </div>
   </div>
 </div>
@@ -249,6 +303,8 @@
     if (!btn || !overlay) return
 
     const hideOverlayAndStart = () => {
+      // If overlay already hidden, do nothing (prevents double-start)
+      if (overlay.style.display === 'none') return
       // run the CSS hide animation, then fully hide after it ends
       overlay.classList.add('hide')
       const onAnimEnd = () => {
@@ -257,6 +313,14 @@
       }
       overlay.addEventListener('animationend', onAnimEnd)
 
+      // Remove the Enter key handler used for the start screen so it
+      // cannot trigger another start while the app is running.
+      try {
+        if (typeof onKey === 'function') document.removeEventListener('keydown', onKey)
+      } catch (e) {}
+
+      // Ensure the global game-over flag is cleared before starting
+      window.isGameOver = false
       if (typeof window.initGame === 'function') {
         window.initGame()
       } else if (typeof window.startRendering === 'function') {
@@ -268,7 +332,8 @@
 
     // Allow Enter key to start the game for accessibility / convenience
     const onKey = (e) => {
-      if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+      // Only act if the start overlay is visible
+      if ((e.code === 'Enter' || e.code === 'NumpadEnter') && overlay.style.display !== 'none') {
         e.preventDefault()
         hideOverlayAndStart()
       }

@@ -42,6 +42,12 @@ class Monster {
 
     this.onDeath = onDeath
     this.isDead = false
+    // Debug: expose initial spawn to console when enabled
+    if (typeof window !== 'undefined' && window.DEBUG_LOG_MONSTERS) {
+      try {
+        console.log('Monster created', { x: this.x, y: this.y, original: this.originalPosition })
+      } catch (e) {}
+    }
   }
 
   receiveHit() {
@@ -72,7 +78,7 @@ class Monster {
     c.drawImage(
       this.image,
       this.currentSprite.x,
-      this.currentSprite.height * this.currentFrame + 0.5,
+      this.currentSprite.y + this.currentSprite.height * this.currentFrame + 0.5,
       this.currentSprite.width,
       this.currentSprite.height,
       this.x,
@@ -81,6 +87,27 @@ class Monster {
       this.height
     )
     c.restore()
+
+    // Debug visuals: show original position and current position
+    if (typeof window !== 'undefined' && window.DEBUG_MONSTER_ORIGINS) {
+      try {
+        // originalPosition marker (green)
+        c.save()
+        c.fillStyle = 'rgba(0,255,0,0.8)'
+        c.beginPath()
+        c.arc(this.originalPosition.x + this.width / 2, this.originalPosition.y + this.height / 2, 3, 0, Math.PI * 2)
+        c.fill()
+        c.restore()
+
+        // current position marker (red)
+        c.save()
+        c.fillStyle = 'rgba(255,0,0,0.8)'
+        c.beginPath()
+        c.arc(this.x + this.width / 2, this.y + this.height / 2, 3, 0, Math.PI * 2)
+        c.fill()
+        c.restore()
+      } catch (e) {}
+    }
   }
 
   update(deltaTime, collisionBlocks) {
@@ -143,11 +170,18 @@ class Monster {
       const deltaY = targetLocation.y - this.y // 20
 
       const hypotenuse = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-      const normalizedDeltaX = deltaX / hypotenuse // 0.6
-      const normalizedDeltaY = deltaY / hypotenuse // 0.4
+        // Guard against divide-by-zero (can happen if targetLocation === current)
+        if (hypotenuse === 0) {
+          // fall back to the angle we already computed
+          this.velocity.x = Math.cos(angle) * CIRCLE_RADIUS
+          this.velocity.y = Math.sin(angle) * CIRCLE_RADIUS
+        } else {
+          const normalizedDeltaX = deltaX / hypotenuse // 0.6
+          const normalizedDeltaY = deltaY / hypotenuse // 0.4
 
-      this.velocity.x = normalizedDeltaX * CIRCLE_RADIUS
-      this.velocity.y = normalizedDeltaY * CIRCLE_RADIUS
+          this.velocity.x = normalizedDeltaX * CIRCLE_RADIUS
+          this.velocity.y = normalizedDeltaY * CIRCLE_RADIUS
+        }
     }
 
     this.elapsedMovementTime += deltaTime

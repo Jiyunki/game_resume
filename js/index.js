@@ -254,14 +254,66 @@ let dialogOpen = false
 let activeNpc = null
 let dialogIndex = 0
 
+// Completion tracking: talked NPCs and unique collected item types
+let talkedNpcs = new Set()
+let collectedItems = new Set()
+// Icons for collected items (drawn in HUD)
+let collectedItemIcons = []
+
+function resetCompletionProgress() {
+  try {
+    talkedNpcs.clear()
+    collectedItems.clear()
+    collectedItemIcons.length = 0
+    for (const npc of npcs) {
+      if (npc) npc._hasBeenTalked = false
+    }
+    const completeOverlay = document.getElementById('game-complete')
+    if (completeOverlay) completeOverlay.style.display = 'none'
+  } catch (e) {}
+}
+
+function checkForCompletion() {
+  if (talkedNpcs.size >= 4 && collectedItems.size >= 3) {
+    showGameComplete()
+  }
+}
+
+function showGameComplete() {
+  try {
+    window.isGameOver = true
+    if (player) player.canMove = false
+    try { if (window.backgroundMusic) { window.backgroundMusic.pause(); window.backgroundMusic.currentTime = 0 } } catch (e) {}
+    const overlay = document.getElementById('game-complete')
+    if (overlay) {
+      overlay.style.display = 'flex'
+      const btn = document.getElementById('complete-restart-button')
+      if (btn) {
+        btn.focus()
+        btn.addEventListener('click', () => window.location.reload())
+      }
+    }
+  } catch (e) {}
+}
+
 // Game state
 let isGameOver = false
 
 function showGameOver() {
   if (isGameOver) return
   isGameOver = true
+  window.isGameOver = true
+  // Clear completion progress when player dies
+  try { resetCompletionProgress() } catch (e) {}
   try { player.canMove = false } catch (e) {}
-  try { if (window.backgroundMusic) window.backgroundMusic.pause() } catch (e) {}
+  try { if (window.backgroundMusic) { window.backgroundMusic.pause(); window.backgroundMusic.currentTime = 0 } } catch (e) {}
+  try { if (dialogSound) { dialogSound.pause(); dialogSound.currentTime = 0 } } catch (e) {}
+  try {
+    if (player) {
+      if (player.attackSound) { player.attackSound.pause(); player.attackSound.currentTime = 0 }
+      if (player.bumpSound) { player.bumpSound.pause(); player.bumpSound.currentTime = 0 }
+    }
+  } catch (e) {}
   const overlay = document.getElementById('game-over')
   if (overlay) {
     overlay.style.display = 'flex'
@@ -496,12 +548,29 @@ function animate() {
       p.y < player.y + player.height &&
       p.y + p.height > player.y
     ) {
-      // Apply pickup effect: heal one heart in UI (set first non-full heart to full)
-      const emptyHeart = hearts.find((h) => h.currentFrame < 4)
-      if (emptyHeart) {
-        emptyHeart.currentFrame = 4
+      // Only collect if the drop has become collectible (respect collectDelay)
+      if (p.collectible) {
+        // Apply pickup effect: heal one heart in UI (set first non-full heart to full)
+        const emptyHeart = hearts.find((h) => h.currentFrame < 4)
+        if (emptyHeart) {
+          emptyHeart.currentFrame = 4
+        }
+        // Track collected item type for completion (use basename of image)
+        try {
+          const src = (p.image && p.image.src) ? p.image.src : (p.imageSrc || '')
+          const name = (typeof src === 'string') ? src.split('/').pop() : ''
+          if (name && !collectedItems.has(name)) {
+            collectedItems.add(name)
+            // create an Image for HUD icon; use relative images/ path
+            const icon = new Image()
+            icon.src = './images/' + name
+            collectedItemIcons.push(icon)
+          }
+          checkForCompletion()
+        } catch (e) {}
+
+        pickups.splice(i, 1)
       }
-      pickups.splice(i, 1)
     }
   } 
 
@@ -514,6 +583,23 @@ function animate() {
   })
   c.restore()
 
+  // HUD: draw collected item icons under hearts
+  c.save()
+  c.scale(MAP_SCALE, MAP_SCALE)
+  try {
+    const iconStartX = 10
+    const iconY = 34
+    const iconSize = 20
+    const iconSpacing = 23
+    for (let i = 0; i < collectedItemIcons.length; i++) {
+      const img = collectedItemIcons[i]
+      if (img && img.complete) {
+        c.drawImage(img, iconStartX + i * iconSpacing, iconY, iconSize, iconSize)
+      }
+    }
+  } catch (e) {}
+  c.restore()
+
   // HUD: dialog box
   if (dialogOpen && activeNpc) {
     renderDialogBox(c, activeNpc.getDialog(dialogIndex) || '')
@@ -524,6 +610,8 @@ function animate() {
 
 const startRendering = async () => {
   try {
+    // Clear any previous completion progress when starting
+    try { resetCompletionProgress() } catch (e) {}
     backgroundCanvas = await renderStaticLayers(layersData)
     frontRendersCanvas = await renderStaticLayers(frontRendersLayersData)
     if (!backgroundCanvas) {
@@ -652,6 +740,15 @@ const startRendering = async () => {
               } catch (err) {}
               dialogIndex = nextIndex
             } else {
+              // Conversation finished: mark NPC as talked for completion
+              try {
+                if (activeNpc && !activeNpc._hasBeenTalked) {
+                  activeNpc._hasBeenTalked = true
+                  talkedNpcs.add(activeNpc)
+                }
+                checkForCompletion()
+              } catch (e) {}
+
               dialogOpen = false
               if (activeNpc) activeNpc.isTalking = false
               activeNpc = null

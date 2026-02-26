@@ -163,7 +163,7 @@ class Player {
     this.isInvincible = true
     // Play bump/hurt sound if available
     try {
-      if (this.bumpSound) {
+      if (!window.isGameOver && this.bumpSound) {
         this.bumpSound.currentTime = 0
         this.bumpSound.play()
       }
