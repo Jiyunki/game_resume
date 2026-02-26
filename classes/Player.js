@@ -348,6 +348,14 @@ class Player {
       width: this.attackBoxes[this.facing].width,
       height: this.attackBoxes[this.facing].height,
     }
+
+    // Clamp player inside world bounds so they can't move beyond the map edges
+    try {
+      if (typeof MAP_WIDTH !== 'undefined' && typeof MAP_HEIGHT !== 'undefined') {
+        this.x = Math.max(0, Math.min(this.x, MAP_WIDTH - this.width))
+        this.y = Math.max(0, Math.min(this.y, MAP_HEIGHT - this.height))
+      }
+    } catch (e) {}
   }
 
   updateHorizontalPosition(deltaTime) {

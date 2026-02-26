@@ -185,50 +185,19 @@ const monsterSprites = {
   },
 }
 
-const monsters = [
-  new Monster({
-    x: 200,
-    y: 150,
-    size: 15,
-    imageSrc: './images/bamboo.png',
-    sprites: monsterSprites,
-  }),
-  new Monster({
-    x: 300,
-    y: 150,
-    size: 15,
-    imageSrc: './images/dragon.png',
-    sprites: monsterSprites,
-  }),
-  new Monster({
-    x: 48,
-    y: 400,
-    size: 15,
-    imageSrc: './images/bamboo.png',
-    sprites: monsterSprites,
-  }),
-  new Monster({
-    x: 288,
-    y: 416,
-    size: 15,
-    imageSrc: './images/bamboo.png',
-    sprites: monsterSprites,
-  }),
-  new Monster({
-    x: 112,
-    y: 416,
-    size: 15,
-    imageSrc: './images/dragon.png',
-    sprites: monsterSprites,
-  }),
-  new Monster({
-    x: 400,
-    y: 400,
-    size: 15,
-    imageSrc: './images/dragon.png',
-    sprites: monsterSprites,
-  }),
+// Monster definitions. Instantiated later in `startRendering()` to avoid
+// first-load race conditions (DPR / canvas sizing / asset load timing).
+const MONSTER_DEFS = [
+  { x: 200, y: 150, size: 15, imageSrc: './images/bamboo.png', sprites: monsterSprites },
+  { x: 300, y: 150, size: 15, imageSrc: './images/dragon.png', sprites: monsterSprites },
+  { x: 48, y: 400, size: 15, imageSrc: './images/bamboo.png', sprites: monsterSprites },
+  { x: 288, y: 416, size: 15, imageSrc: './images/bamboo.png', sprites: monsterSprites },
+  { x: 112, y: 416, size: 15, imageSrc: './images/dragon.png', sprites: monsterSprites },
+  { x: 400, y: 400, size: 15, imageSrc: './images/dragon.png', sprites: monsterSprites },
 ]
+
+// Instantiated after static layers are ready
+let monsters = []
 
 // pickups 
 const pickups = []
@@ -609,6 +578,7 @@ function animate() {
 }
 
 const startRendering = async () => {
+  console.log('startRendering called')
   try {
     // Clear any previous completion progress when starting
     try { resetCompletionProgress() } catch (e) {}
@@ -811,6 +781,15 @@ const startRendering = async () => {
     }
 
     animate()
+    // Instantiate monsters after static layers/rendering setup to avoid
+    // first-load position issues. This ensures canvas size / DPR is stable
+    // before monsters pick their positions and movement targets.
+    try {
+      monsters = MONSTER_DEFS.map(def => new Monster(def))
+      console.log('Initial monsters (instantiated):', monsters.map(m => ({ x: m.x, y: m.y, original: m.originalPosition })))
+    } catch (e) {
+      console.error('Failed to instantiate monsters after rendering setup', e)
+    }
   } catch (error) {
     console.error('Error during rendering:', error)
   }

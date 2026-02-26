@@ -322,8 +322,10 @@
       // Ensure the global game-over flag is cleared before starting
       window.isGameOver = false
       if (typeof window.initGame === 'function') {
+        console.log('Calling window.initGame()')
         window.initGame()
       } else if (typeof window.startRendering === 'function') {
+        console.log('Calling window.startRendering()')
         window.startRendering()
       }
     }

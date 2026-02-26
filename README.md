@@ -1,16 +1,73 @@
+
 # Game Resume
 
-This repository contains a small browser-based game demo and assets for resume purpose. The project is structured for simple local development - open `index.html` in a browser to run.
+This repository contains a small browser-based game demo and assets intended for a resume project. It's designed to be easy to run locally for development and experimentation.
 
-**How to run**
+**Getting started**
 
-- Install `Live Server` from the VSCode extension
-- Right click `index.html` and select `Open with Live Server`.
+Please Install VS Code before you clone this repository
+
+1. Clone the repository to your vs code:
+
+```bash
+git clone https://github.com/<your-username>/gamed_resume.git
+cd gamed_resume
+```
+
+2. Open the project in VS Code:
+
+If you have the `code` command available, run:
+
+```bash
+code .
+```
+
+If not, open VS Code and choose `File > Open...` and select the `gamed_resume` folder.
+
+3. Serve the project locally (two easy options):
+
+- Option A — Live Server (recommended for beginners):
+  - Install the **Live Server** extension in VS Code (Extensions view ▶ search "Live Server").
+  - Open `index.html` in the editor, right-click the file and choose `Open with Live Server`.
+
+- Option B — Simple Python server (no extensions):
+  - From the project folder run:
+
+```bash
+python3 -m http.server 8000
+```
+  - Open your browser to http://localhost:8000 and click `index.html`.
+
+4. Play and iterate
+
+- Use the browser DevTools (Console) to see any errors.
+- When you change images or scripts, refresh the page (or use Live Server's auto-refresh).
+
+5. Publish on your GitHub and Deploy it to the web
+
+- After any changes you made, run this commands to push it to your GitHub
+```bash
+git add .
+git commit -m "name of the change"
+git push origin main
+```
+- Then, go to Settings and select Pages to deploy on GitHub Pages
+  - Make sure to deploy it from the branch you developed (e.g., main /root)
+
+**VS Code setup tips**
+
+- Recommended extensions:
+  - Live Server — quickly preview `index.html` over a local server.
+    - You can right click `index.html` and select `Open with Live Server`
+  - ESLint (optional) — helps with JavaScript linting.
+
+- Useful built-in features:
+  - Debugging: Open the `Run and Debug` panel to configure browser debugging with the "Edge" or "Chrome" debug extensions if you want breakpoints.
+  - Integrated terminal: Use the terminal (`Ctrl+`` / Cmd+``) to run the Python server or git commands.
 
 **Repository layout**
 
-- `index.html`: Project entry page - opens the game in a browser.
-
+- `index.html`: Project entry page — opens the game in a browser.
 
 - `classes/`: Core JavaScript classes used by the game.
   - `CollisionBlock.js` - collision block logic.
@@ -32,7 +89,6 @@ This repository contains a small browser-based game demo and assets for resume p
   - `index.js` - main entry JS for the game.
   - `eventListeners.js` - input and DOM event wiring.
   - `utils.js` - shared utilities used across scripts.
-
 
 **Customizing / Modifying the project**
 
