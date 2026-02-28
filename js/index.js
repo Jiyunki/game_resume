@@ -222,6 +222,9 @@ let npcs = []
 let dialogOpen = false
 let activeNpc = null
 let dialogIndex = 0
+// Dialog arrow button DOM references (initialized in startRendering)
+let dialogLeftBtn = null
+let dialogRightBtn = null
 
 // Completion tracking: talked NPCs and unique collected item types
 let talkedNpcs = new Set()
@@ -300,6 +303,8 @@ window.showGameOver = showGameOver
 
 // Dialog box image (optional) - loaded during startRendering
 let dialogBoxImage = null
+// Optional dialog/info icon (DialogInfo.png) - shows above NPCs to prompt interaction
+let dialogInfoImage = null
 // Dialog/talk sound (plays when dialog opens or advances)
 let dialogSound = null
 
@@ -385,11 +390,34 @@ function animate() {
   // Render scene
   c.save()
   c.scale(MAP_SCALE, MAP_SCALE)
-  c.translate(-horizontalScrollDistance, -verticalScrollDistance)
+  // Round scroll to whole pixels to keep a stable pixel-aligned camera.
+  // This ensures every sprite's rounded draw position remains consistent
+  // between frames and prevents jitter when entities move diagonally.
+  const renderScrollX = Math.round(horizontalScrollDistance)
+  const renderScrollY = Math.round(verticalScrollDistance)
+  c.translate(-renderScrollX, -renderScrollY)
   c.clearRect(0, 0, canvas.width, canvas.height)
   c.drawImage(backgroundCanvas, 0, 0)
   // draw NPCs (they were previously part of a static layer)
   for (const npc of npcs) {
+    // Determine whether to show the dialog/info icon above this NPC:
+    // show when player is nearby, NPC hasn't been talked to, not currently talking, and no dialog is open
+    try {
+      const shouldShow = !dialogOpen && !npc._hasBeenTalked && !npc.isTalking && npc.isNear(player, 48)
+      npc._showDialogIcon = shouldShow
+
+      if (npc._showDialogIcon && dialogInfoImage) {
+        npc._dialogIconElapsed += deltaTime
+        if (npc._dialogIconElapsed >= npc._dialogIconInterval) {
+          npc._dialogIconFrame = (npc._dialogIconFrame + 1) % 4
+          npc._dialogIconElapsed -= npc._dialogIconInterval
+        }
+      } else {
+        npc._dialogIconFrame = 0
+        npc._dialogIconElapsed = 0
+      }
+    } catch (e) {}
+
     npc.update(deltaTime)
     npc.draw(c)
   }
@@ -429,8 +457,9 @@ function animate() {
               x: monster.x,
               y: monster.y,
               imageSrc: choice.imageSrc,
-              width: 24,
-              height: 24,
+              // reduce visible size slightly to be less obtrusive
+              width: 18,
+              height: 18,
               velocity: { x: 0, y: 0 },
               collectDelay: 0.25,
               lifeTime: 30,
@@ -563,7 +592,11 @@ function animate() {
     for (let i = 0; i < collectedItemIcons.length; i++) {
       const img = collectedItemIcons[i]
       if (img && img.complete) {
+        // Draw HUD icons without smoothing so pixel art stays crisp
+        const prevSmoothing = (c.imageSmoothingEnabled !== undefined) ? c.imageSmoothingEnabled : true
+        if (c.imageSmoothingEnabled !== undefined) c.imageSmoothingEnabled = false
         c.drawImage(img, iconStartX + i * iconSpacing, iconY, iconSize, iconSize)
+        if (c.imageSmoothingEnabled !== undefined) c.imageSmoothingEnabled = prevSmoothing
       }
     }
   } catch (e) {}
@@ -573,6 +606,44 @@ function animate() {
   if (dialogOpen && activeNpc) {
     renderDialogBox(c, activeNpc.getDialog(dialogIndex) || '')
   }
+
+  // Show/hide dialog arrow buttons (DOM) to allow clicking for navigation
+  try {
+    if (dialogLeftBtn && dialogRightBtn) {
+      if (!dialogOpen) {
+        dialogLeftBtn.style.display = 'none'
+        dialogRightBtn.style.display = 'none'
+      } else {
+        // Compute dialog box screen position to place arrows inside its bottom-left/right
+        const rect = canvas.getBoundingClientRect()
+        const scale = rect.width / VIEWPORT_WIDTH
+        const boxW = Math.max(0, VIEWPORT_WIDTH - 40)
+        const boxH = 90
+        const x = 20
+        const y = VIEWPORT_HEIGHT - boxH - 20
+
+        const cssX = rect.left + x * scale
+        const cssY = rect.top + y * scale
+        const cssBoxW = boxW * scale
+        const cssBoxH = boxH * scale
+
+        const arrowSize = Math.min(36, Math.floor(cssBoxH * 0.2))
+        const margin = Math.max(4, Math.floor(6 * scale))
+
+        dialogLeftBtn.style.display = 'flex'
+        dialogLeftBtn.style.width = arrowSize + 'px'
+        dialogLeftBtn.style.height = arrowSize + 'px'
+        dialogLeftBtn.style.left = (cssX + margin) + 'px'
+        dialogLeftBtn.style.top = (cssY + cssBoxH - arrowSize - margin) + 'px'
+
+        dialogRightBtn.style.display = 'flex'
+        dialogRightBtn.style.width = arrowSize + 'px'
+        dialogRightBtn.style.height = arrowSize + 'px'
+        dialogRightBtn.style.left = (cssX + cssBoxW - arrowSize - margin) + 'px'
+        dialogRightBtn.style.top = (cssY + cssBoxH - arrowSize - margin) + 'px'
+      }
+    }
+  } catch (e) {}
 
   requestAnimationFrame(animate)
 }
@@ -610,6 +681,19 @@ const startRendering = async () => {
       dialogBoxImage = null
     }
 
+    // Preload the small dialog/info icon used above NPC heads (4-frame strip)
+    try {
+      dialogInfoImage = await loadImage('./images/DialogInfo.png')
+    } catch (err) {
+      try {
+        dialogInfoImage = await loadImage('./images/dialoginfo.png')
+      } catch (e) {
+        dialogInfoImage = null
+      }
+    }
+    // expose to global/window so other modules (classes) can reference it
+    try { window.dialogInfoImage = dialogInfoImage } catch (e) {}
+
     // Preload dialog/talk sound so we can play it when opening/advancing dialog
     try {
       dialogSound = new Audio('./sound/talk.wav')
@@ -620,6 +704,52 @@ const startRendering = async () => {
       console.warn('Dialog sound could not be loaded', err)
       dialogSound = null
     }
+
+    // Hook up dialog arrow buttons added in index.html
+    try {
+      dialogLeftBtn = document.getElementById('dialog-left')
+      dialogRightBtn = document.getElementById('dialog-right')
+
+      if (dialogLeftBtn) {
+        dialogLeftBtn.addEventListener('click', (ev) => {
+          ev.preventDefault()
+          try {
+            if (dialogIndex > 0) {
+              dialogIndex = Math.max(0, dialogIndex - 1)
+              try { if (dialogSound) { dialogSound.currentTime = 0; dialogSound.play() } } catch (e) {}
+            }
+          } catch (e) {}
+        })
+      }
+
+      if (dialogRightBtn) {
+        dialogRightBtn.addEventListener('click', (ev) => {
+          ev.preventDefault()
+          try {
+            const nextIndex = dialogIndex + 1
+            const total = activeNpc?.dialogues?.length || 0
+            if (nextIndex < total) {
+              dialogIndex = nextIndex
+              try { if (dialogSound) { dialogSound.currentTime = 0; dialogSound.play() } } catch (e) {}
+            } else {
+              try {
+                if (activeNpc && !activeNpc._hasBeenTalked) {
+                  activeNpc._hasBeenTalked = true
+                  talkedNpcs.add(activeNpc)
+                }
+                checkForCompletion()
+              } catch (e) {}
+
+              dialogOpen = false
+              if (activeNpc) activeNpc.isTalking = false
+              activeNpc = null
+              dialogIndex = 0
+              player.canMove = true
+            }
+          } catch (e) {}
+        })
+      }
+    } catch (e) {}
 
     // Create NPCs using explicit per-NPC definitions if available (data/npcs.js)
     try {
@@ -692,59 +822,9 @@ const startRendering = async () => {
       console.warn('Could not create NPCs', err)
     }
 
-    // Dialog input handling (E to talk/advance, Escape to close)
+    // Dialog input handling: Escape to close (talk/advance handled via spacebar)
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyE') {
-        if (dialogOpen) {
-            // Advance dialog only if there is another line; play sound only when
-            // moving to the next line. If advancing would close the dialog, do
-            // not play the sound and just close.
-            const nextIndex = dialogIndex + 1
-            const total = activeNpc?.dialogues?.length || 0
-            if (nextIndex < total) {
-              try {
-                if (dialogSound) {
-                  dialogSound.currentTime = 0
-                  dialogSound.play()
-                }
-              } catch (err) {}
-              dialogIndex = nextIndex
-            } else {
-              // Conversation finished: mark NPC as talked for completion
-              try {
-                if (activeNpc && !activeNpc._hasBeenTalked) {
-                  activeNpc._hasBeenTalked = true
-                  talkedNpcs.add(activeNpc)
-                }
-                checkForCompletion()
-              } catch (e) {}
-
-              dialogOpen = false
-              if (activeNpc) activeNpc.isTalking = false
-              activeNpc = null
-              dialogIndex = 0
-              player.canMove = true
-            }
-          } else {
-          for (const npc of npcs) {
-            if (npc.isNear(player, 28)) {
-              dialogOpen = true
-              // play dialog open sound
-              try {
-                if (dialogSound) {
-                  dialogSound.currentTime = 0
-                  dialogSound.play()
-                }
-              } catch (err) {}
-              activeNpc = npc
-              dialogIndex = 0
-              player.canMove = false
-              if (activeNpc) activeNpc.isTalking = true
-              break
-            }
-          }
-        }
-      } else if (e.code === 'Escape' && dialogOpen) {
+      if (e.code === 'Escape' && dialogOpen) {
         dialogOpen = false
         activeNpc = null
         dialogIndex = 0

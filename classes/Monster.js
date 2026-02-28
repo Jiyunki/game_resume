@@ -73,20 +73,44 @@ class Monster {
 
     let alpha = 1
     if (this.isInvincible) alpha = 0.5
-    c.save()
-    c.globalAlpha = alpha
-    c.drawImage(
+
+    const _drawImageNoSmooth = (ctx, img, sx, sy, sw, sh, dx, dy, dw, dh, a = 1) => {
+      try {
+        ctx.save()
+        if (ctx.imageSmoothingEnabled !== undefined) ctx.imageSmoothingEnabled = false
+        ctx.globalAlpha = a
+        ctx.drawImage(
+          img,
+          Math.floor(sx),
+          Math.floor(sy),
+          Math.floor(sw),
+          Math.floor(sh),
+          Math.round(dx),
+          Math.round(dy),
+          Math.round(dw),
+          Math.round(dh)
+        )
+      } catch (e) {
+      } finally {
+        try {
+          ctx.restore()
+        } catch (e) {}
+      }
+    }
+
+    _drawImageNoSmooth(
+      c,
       this.image,
       this.currentSprite.x,
-      this.currentSprite.y + this.currentSprite.height * this.currentFrame + 0.5,
+      this.currentSprite.y + this.currentSprite.height * this.currentFrame,
       this.currentSprite.width,
       this.currentSprite.height,
       this.x,
       this.y,
       this.width,
-      this.height
+      this.height,
+      alpha
     )
-    c.restore()
 
     // Debug visuals: show original position and current position
     if (typeof window !== 'undefined' && window.DEBUG_MONSTER_ORIGINS) {

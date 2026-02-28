@@ -238,14 +238,36 @@ class Player {
     let alpha = 1
     if (this.isInvincible) alpha = 0.5
 
-    c.save()
-    c.globalAlpha = alpha
-    c.drawImage(
+    // draw without smoothing to avoid bleeding/borders when scaled
+    const _drawImageNoSmooth = (ctx, img, sx, sy, sw, sh, dx, dy, dw, dh) => {
+      try {
+        ctx.save()
+        if (ctx.imageSmoothingEnabled !== undefined) ctx.imageSmoothingEnabled = false
+        ctx.globalAlpha = alpha
+        ctx.drawImage(
+          img,
+          Math.floor(sx),
+          Math.floor(sy),
+          Math.floor(sw),
+          Math.floor(sh),
+          Math.round(dx),
+          Math.round(dy),
+          Math.round(dw),
+          Math.round(dh)
+        )
+      } catch (e) {
+      } finally {
+        try {
+          ctx.restore()
+        } catch (e) {}
+      }
+    }
+
+    _drawImageNoSmooth(
+      c,
       this.image,
       this.currentSprite.x,
-      this.currentSprite.y +
-        this.currentSprite.height * this.currentFrame +
-        0.5,
+      this.currentSprite.y + this.currentSprite.height * this.currentFrame,
       this.currentSprite.width,
       this.currentSprite.height,
       this.x,
@@ -253,7 +275,6 @@ class Player {
       this.width,
       this.height
     )
-    c.restore()
 
     // Draw out our weapon
     if (this.isAttacking) {
@@ -286,11 +307,16 @@ class Player {
           break
       }
       c.save()
-      c.globalAlpha = alpha
-      c.translate(this.x + xOffset, this.y + yOffset)
-      c.rotate(angle)
-      c.drawImage(this.weaponSprite, -3, -8, 6, 16)
-      c.restore()
+      try {
+        if (c.imageSmoothingEnabled !== undefined) c.imageSmoothingEnabled = false
+        c.globalAlpha = alpha
+        c.translate(this.x + xOffset, this.y + yOffset)
+        c.rotate(angle)
+        c.drawImage(this.weaponSprite, -3, -8, 6, 16)
+      } catch (e) {
+      } finally {
+        c.restore()
+      }
     }
   }
 

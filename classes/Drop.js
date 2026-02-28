@@ -77,7 +77,11 @@ class Drop {
     if (!this.loaded) return
     c.save()
     c.globalAlpha = this.alpha
+    // Ensure pixel-art stays crisp when scaled by disabling smoothing
+    const prevSmoothing = (c.imageSmoothingEnabled !== undefined) ? c.imageSmoothingEnabled : true
+    if (c.imageSmoothingEnabled !== undefined) c.imageSmoothingEnabled = false
     c.drawImage(this.image, this.x, this.y, this.width, this.height)
+    if (c.imageSmoothingEnabled !== undefined) c.imageSmoothingEnabled = prevSmoothing
     c.restore()
   }
 

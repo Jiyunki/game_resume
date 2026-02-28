@@ -27,6 +27,12 @@ class NPC {
     this.dialogues = dialogues || []
     this.spriteConfig = spriteConfig || null
 
+    // dialog/info icon animation state (4-frame sprite strip)
+    this._dialogIconFrame = 0
+    this._dialogIconElapsed = 0
+    this._dialogIconInterval = 0.22
+    this._showDialogIcon = false
+
     // Animation state (assumes a 4-frame per direction sheet: down, left, right, up)
     this.frameCount = 4
     this.currentFrame = 0
@@ -121,7 +127,64 @@ class NPC {
       // fallback: draw a magenta box
       ctx.fillStyle = 'magenta'
       ctx.fillRect(this.x, this.y, this.width, this.height)
+      // draw dialog/info icon if enabled
+      try {
+        if (this._showDialogIcon && window.dialogInfoImage) {
+          const img = window.dialogInfoImage
+          const fw = Math.floor(img.width / 4) || img.width / 4
+          const fh = img.height
+          const sx = this._dialogIconFrame * fw
+          const sy = 0
+          const iconW = Math.min(20, this.width * 1.2)
+          const iconH = (fh / fw) * iconW
+          const dx = this.x + this.width / 2 - iconW / 2
+          const dy = this.y - iconH - 2
+          ctx.drawImage(img, sx, sy, fw, fh, dx, dy, iconW, iconH)
+        }
+      } catch (e) {}
       return
+    }
+    // helper to draw images without smoothing and using integer coordinates
+    const _drawImageNoSmooth = (ctx, img, sx, sy, sw, sh, dx, dy, dw, dh) => {
+      try {
+        ctx.save()
+        if (ctx.imageSmoothingEnabled !== undefined) ctx.imageSmoothingEnabled = false
+        ctx.drawImage(
+          img,
+          Math.floor(sx),
+          Math.floor(sy),
+          Math.floor(sw),
+          Math.floor(sh),
+          Math.round(dx),
+          Math.round(dy),
+          Math.round(dw),
+          Math.round(dh)
+        )
+      } catch (e) {
+        // drawing failed silently
+      } finally {
+        try {
+          ctx.restore()
+        } catch (e) {}
+      }
+    }
+
+    // helper to draw dialog icon when present
+    const _drawDialogIcon = (ctx) => {
+      try {
+        if (this._showDialogIcon && window.dialogInfoImage) {
+          const img = window.dialogInfoImage
+          const fw = Math.floor(img.width / 4) || img.width / 4
+          const fh = img.height
+          const sx = this._dialogIconFrame * fw
+          const sy = 0
+          const iconW = Math.min(20, this.width * 1.2)
+          const iconH = (fh / fw) * iconW
+          const dx = this.x + this.width / 2 - iconW / 2
+          const dy = this.y - iconH - 2
+          _drawImageNoSmooth(ctx, img, sx, sy, fw, fh, dx, dy, iconW, iconH)
+        }
+      } catch (e) {}
     }
     // If spriteConfig defines per-animation objects (player-style), use that first
     const cfg = this.spriteConfig
@@ -139,7 +202,8 @@ class NPC {
         const srcX = anim.x || 0
         const srcY = (anim.y || 0) + ah * this.currentFrame
 
-        ctx.drawImage(this.image, srcX, srcY, aw, ah, this.x, this.y, this.width, this.height)
+        _drawImageNoSmooth(ctx, this.image, srcX, srcY, aw, ah, this.x, this.y, this.width, this.height)
+        _drawDialogIcon(ctx)
         return
       }
     }
@@ -167,7 +231,8 @@ class NPC {
       }
     }
 
-    ctx.drawImage(this.image, srcX, srcY, frameW, frameH, this.x, this.y, this.width, this.height)
+    _drawImageNoSmooth(ctx, this.image, srcX, srcY, frameW, frameH, this.x, this.y, this.width, this.height)
+    _drawDialogIcon(ctx)
   }
 
   // simple proximity check using squared distance

@@ -33,7 +33,65 @@ window.addEventListener('keydown', (event) => {
 
     case ' ':
       event.preventDefault()
-      player.attack()
+      // If a dialog is open, advance it. If near an NPC, open dialog.
+      // Fallback: perform attack when not interacting with NPCs.
+      try {
+        if (typeof dialogOpen !== 'undefined' && dialogOpen) {
+          // Advance dialog (mirrors index.js KeyE behavior)
+          const nextIndex = dialogIndex + 1
+          const total = activeNpc?.dialogues?.length || 0
+          if (nextIndex < total) {
+            try {
+              if (dialogSound) {
+                dialogSound.currentTime = 0
+                dialogSound.play()
+              }
+            } catch (err) {}
+            dialogIndex = nextIndex
+          } else {
+            try {
+              if (activeNpc && !activeNpc._hasBeenTalked) {
+                activeNpc._hasBeenTalked = true
+                talkedNpcs.add(activeNpc)
+              }
+              checkForCompletion()
+            } catch (e) {}
+
+            dialogOpen = false
+            if (activeNpc) activeNpc.isTalking = false
+            activeNpc = null
+            dialogIndex = 0
+            player.canMove = true
+          }
+        } else {
+          // Not currently in dialog — check for nearby NPCs to start one
+          let opened = false
+          for (const npc of npcs) {
+            if (npc.isNear(player, 28)) {
+              dialogOpen = true
+              try {
+                if (dialogSound) {
+                  dialogSound.currentTime = 0
+                  dialogSound.play()
+                }
+              } catch (err) {}
+              activeNpc = npc
+              dialogIndex = 0
+              player.canMove = false
+              if (activeNpc) activeNpc.isTalking = true
+              opened = true
+              break
+            }
+          }
+          if (!opened) {
+            // No interaction — perform attack
+            player.attack()
+          }
+        }
+      } catch (err) {
+        // If dialog-related globals aren't present, fallback to attack
+        try { player.attack() } catch (e) {}
+      }
       break
   }
 })

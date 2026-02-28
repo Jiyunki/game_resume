@@ -32,10 +32,32 @@ class Sprite {
 
   draw(c) {
     if (!this.loaded) return
+    const _drawImageNoSmooth = (ctx, img, sx, sy, sw, sh, dx, dy, dw, dh, alpha = 1) => {
+      try {
+        ctx.save()
+        if (ctx.imageSmoothingEnabled !== undefined) ctx.imageSmoothingEnabled = false
+        ctx.globalAlpha = alpha
+        ctx.drawImage(
+          img,
+          Math.floor(sx),
+          Math.floor(sy),
+          Math.floor(sw),
+          Math.floor(sh),
+          Math.round(dx),
+          Math.round(dy),
+          Math.round(dw),
+          Math.round(dh)
+        )
+      } catch (e) {
+      } finally {
+        try {
+          ctx.restore()
+        } catch (e) {}
+      }
+    }
 
-    c.save()
-    c.globalAlpha = this.alpha
-    c.drawImage(
+    _drawImageNoSmooth(
+      c,
       this.image,
       this.currentSprite.x + this.currentSprite.width * this.currentFrame,
       this.currentSprite.y,
@@ -44,9 +66,9 @@ class Sprite {
       this.x,
       this.y,
       this.width,
-      this.height
+      this.height,
+      this.alpha
     )
-    c.restore()
   }
 
   update(deltaTime) {
