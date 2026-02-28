@@ -258,6 +258,11 @@ function showGameComplete() {
     try { if (window.backgroundMusic) { window.backgroundMusic.pause(); window.backgroundMusic.currentTime = 0 } } catch (e) {}
     const overlay = document.getElementById('game-complete')
     if (overlay) {
+      try {
+        const secs = getGameplayElapsedSeconds()
+        const timeEl = document.getElementById('gameplay-time')
+        if (timeEl) timeEl.textContent = 'Time: ' + formatTime(secs)
+      } catch (e) {}
       overlay.style.display = 'flex'
       const btn = document.getElementById('complete-restart-button')
       if (btn) {
@@ -288,6 +293,11 @@ function showGameOver() {
   } catch (e) {}
   const overlay = document.getElementById('game-over')
   if (overlay) {
+    try {
+      const secs = getGameplayElapsedSeconds()
+      const timeEl = document.getElementById('gameplay-time-over')
+      if (timeEl) timeEl.textContent = 'Time: ' + formatTime(secs)
+    } catch (e) {}
     overlay.style.display = 'flex'
     const btn = document.getElementById('restart-button')
     if (btn) {
@@ -352,6 +362,26 @@ const leafs = [
 
 let elapsedTime = 0
 
+// Gameplay timer: track when the current run started so we can show final time
+let gameplayStartTime = null
+
+function startGameplayTimer() {
+  gameplayStartTime = performance.now()
+}
+
+function getGameplayElapsedSeconds() {
+  if (!gameplayStartTime) return 0
+  return Math.floor((performance.now() - gameplayStartTime) / 1000)
+}
+
+function formatTime(totalSeconds) {
+  const mins = Math.floor(totalSeconds / 60)
+  const secs = totalSeconds % 60
+  const mm = String(mins).padStart(2, '0')
+  const ss = String(secs).padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
 function animate() {
   // Calculate delta time
   const currentTime = performance.now()
@@ -403,7 +433,8 @@ function animate() {
     // Determine whether to show the dialog/info icon above this NPC:
     // show when player is nearby, NPC hasn't been talked to, not currently talking, and no dialog is open
     try {
-      const shouldShow = !dialogOpen && !npc._hasBeenTalked && !npc.isTalking && npc.isNear(player, 48)
+      // Show dialog/info icon whenever NPC is eligible, regardless of distance
+      const shouldShow = !dialogOpen && !npc._hasBeenTalked && !npc.isTalking
       npc._showDialogIcon = shouldShow
 
       if (npc._showDialogIcon && dialogInfoImage) {
@@ -653,6 +684,7 @@ const startRendering = async () => {
   try {
     // Clear any previous completion progress when starting
     try { resetCompletionProgress() } catch (e) {}
+    try { startGameplayTimer() } catch (e) {}
     backgroundCanvas = await renderStaticLayers(layersData)
     frontRendersCanvas = await renderStaticLayers(frontRendersLayersData)
     if (!backgroundCanvas) {
