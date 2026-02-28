@@ -20,7 +20,22 @@ window.addEventListener('keydown', (event) => {
       break
     case 'ArrowLeft':
       event.preventDefault()
-      keys.a.pressed = true
+      // If a dialog is open, navigate it (go back); otherwise use for movement
+      if (typeof dialogOpen !== 'undefined' && dialogOpen) {
+        try {
+          if (dialogIndex > 0) {
+            dialogIndex = Math.max(0, dialogIndex - 1)
+            try {
+              if (dialogSound) {
+                dialogSound.currentTime = 0
+                dialogSound.play()
+              }
+            } catch (err) {}
+          }
+        } catch (err) {}
+      } else {
+        keys.a.pressed = true
+      }
       break
     case 'ArrowDown':
       event.preventDefault()
@@ -28,7 +43,38 @@ window.addEventListener('keydown', (event) => {
       break
     case 'ArrowRight':
       event.preventDefault()
-      keys.d.pressed = true
+      // If a dialog is open, navigate it (advance); otherwise use for movement
+      if (typeof dialogOpen !== 'undefined' && dialogOpen) {
+        try {
+          const nextIndex = dialogIndex + 1
+          const total = activeNpc?.dialogues?.length || 0
+          if (nextIndex < total) {
+            try {
+              if (dialogSound) {
+                dialogSound.currentTime = 0
+                dialogSound.play()
+              }
+            } catch (err) {}
+            dialogIndex = nextIndex
+          } else {
+            try {
+              if (activeNpc && !activeNpc._hasBeenTalked) {
+                activeNpc._hasBeenTalked = true
+                talkedNpcs.add(activeNpc)
+              }
+              checkForCompletion()
+            } catch (e) {}
+
+            dialogOpen = false
+            if (activeNpc) activeNpc.isTalking = false
+            activeNpc = null
+            dialogIndex = 0
+            player.canMove = true
+          }
+        } catch (err) {}
+      } else {
+        keys.d.pressed = true
+      }
       break
 
     case ' ':
@@ -116,7 +162,10 @@ window.addEventListener('keyup', (event) => {
       break
     case 'ArrowLeft':
       event.preventDefault()
-      keys.a.pressed = false
+      // If dialog is open, don't modify movement flags for arrow keys
+      if (!(typeof dialogOpen !== 'undefined' && dialogOpen)) {
+        keys.a.pressed = false
+      }
       break
     case 'ArrowDown':
       event.preventDefault()
@@ -124,7 +173,10 @@ window.addEventListener('keyup', (event) => {
       break
     case 'ArrowRight':
       event.preventDefault()
-      keys.d.pressed = false
+      // If dialog is open, don't modify movement flags for arrow keys
+      if (!(typeof dialogOpen !== 'undefined' && dialogOpen)) {
+        keys.d.pressed = false
+      }
       break
   }
 })
