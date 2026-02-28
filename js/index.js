@@ -971,9 +971,9 @@ function renderDialogBox(ctx, text) {
 
   // Use black text for better contrast with the dialogue art
   ctx.fillStyle = '#000'
-  ctx.font = '14px PixelFont'
+  ctx.font = '12px PixelFont'
   // Start text at y + paddingTop so you can control the top gap
-  wrapText(ctx, text, x + padding, y + paddingTop, boxW - padding * 2, 16)
+  wrapText(ctx, text, x + padding, y + paddingTop, boxW - padding * 2, 14)
 
   ctx.restore()
 }
@@ -1001,7 +1001,7 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
 window.initGame = function initGame() {
   if (document.fonts && document.fonts.load) {
     document.fonts
-      .load('14px PixelFont')
+      .load('12px PixelFont')
       .then(() => {
         startRendering()
       })

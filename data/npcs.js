@@ -11,9 +11,9 @@ const NPC_DEFS = [
     tileY: 6,
     sprite: './images/villager_7.png',
     dialogues: [
-      "Hey, I am Noyuri. Jiyun's friend at Minerva University.",
-      "She is currently at Taipei, the 4th rotation city after semesters at Seoul, Berlin and Buenos Aires.",
-      "Aside her coding skill, she was a nice actor and director in the musical performnace!"
+      "Hey, I'm Noyuri — I'm Jiyun's friend from Minerva University.",
+      "She is currently in Hyderabad, the last rotation city after semesters in Seoul, Berlin, Taipei and Buenos Aires.",
+      "Aside from her coding skills, she was a talented actor and director in musical performances!"
     ],
     // patrol 2 tiles right (48px) and back
     patrol: [{ x: 5 * 16, y: 6 * 16 }, { x: 5 * 16 + 48, y: 6 * 16 }],
@@ -36,9 +36,9 @@ const NPC_DEFS = [
     tileX: 22,
     tileY: 10,
     sprite: './images/villager_6.png',
-    dialogues: ["Jiyun worked in 3 different startups. It was indeed steep learning curve",
-        "She mostly self-taught skills from advanced excel for financial modeling, and automated workflow in Python",
-        "Where would she be heading next?"],
+    dialogues: ["Jiyun worked at three different startups; it was indeed a steep learning curve.",
+      "She mostly taught herself skills, from advanced Excel for financial modeling to automating workflows in Python.",
+      "Where will she be heading next?"],
     patrol: [{ x: 22 * 16, y: 10 * 16 }, { x: 22 * 16 + 48, y: 10 * 16 }],
     speed: 24,
     spriteConfig: {
@@ -58,10 +58,10 @@ const NPC_DEFS = [
     tileX: 3,
     tileY: 15,
     sprite: './images/villager_4.png',
-    dialogues: ["I am Peter, her past college at ASML",
-        "It was her first time working in Big Tech, with a lot of people",
-        "She really got into all parts of software development life sycle from planning and developing to testing and deploying",
-        "You are lucky to find her"
+    dialogues: ["I'm Peter, her former colleague at ASML.",
+      "It was her first time working in big tech, with many people.",
+      "She really got into all parts of the software development lifecycle, from planning and development to testing and deployment.",
+      "You're lucky to have found her."
     ],
     patrol: [{ x: 3 * 16, y: 15 * 16 }, { x: 3 * 16 + 20, y: 15 * 16 }],
     speed: 24,
@@ -82,9 +82,9 @@ const NPC_DEFS = [
     tileX: 20,
     tileY: 20,
     sprite: './images/villager_2.png',
-    dialogues: ["I know fun fact about her", 
-        "She served as liasion in the World Nobel Peace Prize Summit that was held in South Korea",
-        "She was a junior interpreter (English-Korean) and worked side-by-side with Nobel Peace Laureate!"],
+    dialogues: ["I know a fun fact about her.", 
+      "She served as a liaison at the Nobel Peace Prize Summit held in South Korea.",
+      "She was a junior interpreter (English–Korean) and worked side-by-side with a Nobel Peace Laureate!"],
     patrol: null,
     speed: 0,
     spriteConfig: {

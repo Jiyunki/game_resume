@@ -243,6 +243,35 @@
   }
   /* left/right will be positioned dynamically to sit inside the dialog box */
   .dialog-arrow img { width: 100%; height: 100%; object-fit: contain }
+
+  /* Controls shown on start screen */
+  .controls-grid { display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center; margin:10px 0 }
+  .control-row { display:flex; align-items:center; gap:10px }
+  .key-img { width:36px; height:36px; object-fit:contain; display:inline-block; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -webkit-optimize-contrast: pixelated; }
+  /* Larger spacebar key variant */
+  .key-space { width:88px; height:28px; object-fit:contain; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -webkit-optimize-contrast: pixelated }
+  /* Enter key variant */
+  .key-enter { width:44px; height:32px; object-fit:contain; display:inline-block; vertical-align:middle; margin:0 6px; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -webkit-optimize-contrast: pixelated }
+  .key-box { display:inline-flex; align-items:center; justify-content:center; width:40px; height:34px; border-radius:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); color:#fff; font-weight:700 }
+  /* Arrow-key keyboard-like layout */
+  .arrow-keys { display:grid; grid-template-columns: 40px 40px 40px; grid-template-rows: 40px 40px; gap:6px; align-items:center; justify-items:center }
+  .arrow-keys .k-up { grid-column: 2 / 3; grid-row: 1 / 2 }
+  .arrow-keys .k-left { grid-column: 1 / 2; grid-row: 2 / 3 }
+  .arrow-keys .k-down { grid-column: 2 / 3; grid-row: 2 / 3 }
+  .arrow-keys .k-right { grid-column: 3 / 4; grid-row: 2 / 3 }
+  .arrow-keys img { width:36px; height:36px; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -webkit-optimize-contrast: pixelated }
+  .controls-row-horizontal { display:flex; gap:20px; align-items:flex-start; justify-content:center }
+  .controls-column { display:flex; flex-direction:column; gap:6px; align-items:flex-start }
+  .start-preview { display:flex; gap:18px; align-items:center; justify-content:center; margin-top:12px }
+  .preview-column { display:flex; flex-direction:column; gap:8px; align-items:center }
+  .preview-column img { width:64px; height:64px; object-fit:contain }
+  .drop-icon { width:48px; height:48px; image-rendering: pixelated; image-rendering: -moz-crisp-edges; -webkit-optimize-contrast: pixelated; display:block }
+  /* Sprite frame container to show a single frame from a spritesheet */
+  .sprite-frame { width:64px; height:64px; background-repeat:no-repeat; background-position: 0 0; overflow:hidden; display:block }
+  .sprite-frame { position: relative; width:64px; height:64px; overflow:hidden; display:block }
+  /* Ensure canvases and images render sharply for pixel-art */
+  canvas.sprite-frame { image-rendering: pixelated; image-rendering: -moz-crisp-edges; }
+  .sprite-frame img { position:absolute; left:0; top:0; image-rendering: pixelated; display:block }
 </style>
 <canvas style="image-rendering: pixelated"></canvas>
 
@@ -254,17 +283,61 @@
 <div id="start-screen" role="dialog" aria-modal="true" aria-labelledby="start-title">
   <div class="panel">
       <h1 id="start-title">Jiyun's Resume Game</h1>
-      
-        <p>Welcome to the game!</p>
-        <p>This game is an interactive resume, so the monster, the items that are dropped by the monsters, and the dialogue with the NPCs represent my experience.</p>
-        <p><strong>To Move:</strong> Use WASD or arrow keys</p>
-        <p><strong>To Attack:</strong> Press Space</p>
-      <p><strong>To Talk to NPCs:</strong> Press E</p>
-      <p style="margin-top:6px;"> <strong>Goal:</strong> Talk to all four characters you find on the map without being killed by the monster, and try to discover three different items that can be found when you defeat the monster.</p>
-      <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
+
+        <p>This interactive resume uses monsters, drops, and dialogues to represent my experience</p>
+
+        <div class="controls-grid" aria-hidden="false">
+          <div class="controls-row-horizontal">
+            <div class="controls-column">
+              <div class="control-row" style="align-items:flex-start">
+                <strong style="min-width:78px;text-align:right">Move:</strong>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+                  <div class="arrow-keys" aria-hidden="false" role="img" aria-label="Arrow keys">
+                    <img class="k-up" src="./images/KeyUp.png" alt="Arrow Up">
+                    <img class="k-left" src="./images/KeyLeft.png" alt="Arrow Left">
+                    <img class="k-down" src="./images/KeyDown.png" alt="Arrow Down">
+                    <img class="k-right" src="./images/KeyRight.png" alt="Arrow Right">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="controls-column">
+              <div class="control-row">
+                <strong style="min-width:78px;text-align:right">Attack / Interact:</strong>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <img class="key-img key-space" src="./images/KeySpace.png" alt="Space">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="start-preview" aria-hidden="false">
+          <div class="preview-column">
+            <canvas id="preview-monster-canvas" class="sprite-frame" width="64" height="64" role="img" aria-label="Monster preview"></canvas>
+            <div style="opacity:.9">Heart will run out if u bounce on the monsters</div>
+          </div>
+          <div class="preview-column">
+            <canvas id="preview-npc-canvas" class="sprite-frame" width="64" height="64" role="img" aria-label="Villager preview"></canvas>
+            <div style="opacity:.9">Talk to 4 characters in the map</div>
+          </div>
+          <div class="preview-column" style="align-items:flex-start">
+            <div style="display:flex;gap:8px;align-items:center">
+              <img class="drop-icon" src="./images/JS_drop.png" alt="JS item">
+              <img class="drop-icon" src="./images/Py_drop.png" alt="Python item">
+              <img class="drop-icon" src="./images/R_drop.png" alt="R item">
+            </div>
+            <div style="opacity:.9">Find all of these items by killing monsters</div>
+          </div>
+        </div>
+
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-top:10px;">
         <button id="start-button" class="pulse" aria-label="Start game">Start</button>
-        <small style="opacity:.8;color:#ddd;">or press Enter to start</small>
+        <div style="display:flex;align-items:center;gap:8px">
+          <small style="opacity:.8;color:#ddd;">or press <img class="key-enter" src="./images/KeyEnter.png" alt="Enter"> to start</small>
+        </div>
       </div>
+      <p style="margin-top:10px"><small style="opacity:.86">Click icon at top-right<img src="./images/Book.png" alt="resume" style="width:18px;height:18px;vertical-align:middle;margin-left:6px"> to see resume</small></p>
   </div>
 </div>
 <!-- Game over overlay - initially hidden -->
@@ -321,6 +394,38 @@
 <script src="./js/index.js"></script>
 <script src="./js/eventListeners.js"></script>
 <script>
+  // Draw preview canvases showing the first frame of spritesheets
+  (function() {
+    const drawPreview = (canvasId, imageSrc, slice) => {
+      const canvas = document.getElementById(canvasId)
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      img.onload = () => {
+        try {
+          if (ctx.imageSmoothingEnabled !== undefined) ctx.imageSmoothingEnabled = false
+        } catch (e) {}
+
+        // source slice: default to provided slice or fall back to 16x16 at 0,0
+        const sx = (slice && slice.x) || 0
+        const sy = (slice && slice.y) || 0
+        const sw = (slice && slice.width) || 16
+        const sh = (slice && slice.height) || 16
+
+        // draw the first frame (frame 0)
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+      }
+      img.src = imageSrc
+    }
+
+    // Monster: use the monster sprite definition (walkDown) from game code
+    drawPreview('preview-monster-canvas', './images/dragon.png', { x: 0, y: 0, width: 16, height: 16 })
+
+    // NPC (villager_2): use its spriteConfig animation walkDown (16x16)
+    drawPreview('preview-npc-canvas', './images/villager_2.png', { x: 0, y: 0, width: 16, height: 16 })
+  })();
+
   // Start button handler: hide overlay and initialize the game.
   (function() {
     const btn = document.getElementById('start-button')

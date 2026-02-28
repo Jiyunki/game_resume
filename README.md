@@ -5,16 +5,16 @@ This repository contains a small browser-based game demo and assets intended for
 
 **Getting started**
 
-Please Install VS Code before you clone this repository
+Please install VS Code before you clone this repository.
 
-1. Clone the repository to your vs code:
+1. Clone the repository to your local machine:
 
 ```bash
 git clone https://github.com/Jiyungi/gamed_resume.git
 cd gamed_resume
 ```
 
-2. Or, Download Zip file and open the project in VS Code:
+2. Or, download the ZIP file and open the project in VS Code:
 
   Open VS Code and choose `File > Open...` and select the `gamed_resume` folder.
 
@@ -25,7 +25,7 @@ cd gamed_resume
   - Open `index.html` in the editor, right-click the file and choose `Open with Live Server`.
 
 - Option B — Simple Python server (no extensions):
-  - From the project folder run:
+  - From the project folder, run:
 
 ```bash
 python3 -m http.server 8000
@@ -37,22 +37,22 @@ python3 -m http.server 8000
 - Use the browser DevTools (Console) to see any errors.
 - When you change images or scripts, refresh the page (or use Live Server's auto-refresh).
 
-5. Publish on your GitHub and Deploy it to the web
+5. Publish on GitHub and deploy to the web
 
-- After any changes you made, run this commands to push it to your GitHub
+- After making changes, run these commands to push them to your GitHub repository:
 ```bash
 git add .
 git commit -m "name of the change"
 git push origin main
 ```
 - Then, go to Settings and select Pages to deploy on GitHub Pages
-  - Make sure to deploy it from the branch you developed (e.g., main /root)
+  - Make sure to deploy from the branch you developed on (e.g., main).
 
 **VS Code setup tips**
 
 - Recommended extensions:
   - Live Server — quickly preview `index.html` over a local server.
-    - You can right click `index.html` and select `Open with Live Server`
+    - You can right-click index.html and select 'Open with Live Server'
   - ESLint (optional) — helps with JavaScript linting.
 
 - Useful built-in features:
