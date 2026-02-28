@@ -9,7 +9,7 @@ class Drop {
     height = null,
     scale = 0.6,
     velocity = { x: 0, y: 0 }, // px/sec
-    collectDelay = 0.25, // seconds
+    collectDelay = 0.3, // seconds
     lifeTime = 30, // seconds before auto-remove/fade
   }) {
     this.x = x
