@@ -8,7 +8,7 @@ This repository contains a small browser-based game demo and assets intended for
 - This is a customizable interactive resume template.
 - You can fork it and replace text, images, and dialogue to personalize the experience.
 - No advanced JavaScript knowledge is required for basic edits (text, images, and dialogue).
-- The project is designed for both CS and non-CS users — content edits are straightforward; deeper behavior changes require programming knowledge.
+- The project is designed for both CS and non-CS users. Content edits are straightforward; deeper behavior changes require programming knowledge.
 
 **Getting started**
 
@@ -164,7 +164,7 @@ The list below shows common files or folders you can edit to change visuals, tex
 ### Quick AI prompt examples
 
 - "Edit `data/npcs.js` to make NPCs introduce my name and role. Return only the updated file content."
-- "Update `index.html` intro text to: 'Hello — I'm Jane, a game designer.' Return the exact HTML snippet to replace."
+- "Update `index.html` intro text to: 'Hello - I'm Jane, a game designer.' Return the exact HTML snippet to replace."
 - "Change heart count to 5 in `classes/Heart.js`. Show the small code change and one-sentence reason."
 
 ### Warning about automated edits
