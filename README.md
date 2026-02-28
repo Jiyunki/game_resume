@@ -1,52 +1,64 @@
 
 # Game Resume
 
-This repository contains a small browser-based game demo and assets intended for a resume project. It's designed to be easy to run locally for development and experimentation.
+This repository contains a small browser-based game demo and assets intended for a resume project. It's designed to be easy to run locally for development and experimentation, and published on web by GitHub Pages
+
+**About this template**
+
+- This is a customizable interactive resume template.
+- You can fork it and replace text, images, and dialogue to personalize the experience.
+- No advanced JavaScript knowledge is required for basic edits (text, images, and dialogue).
+- The project is designed for both CS and non-CS users — content edits are straightforward; deeper behavior changes require programming knowledge.
 
 **Getting started**
 
-Please install VS Code before you clone this repository.
-
-1. Clone the repository to your local machine:
+1) Clone the project
 
 ```bash
 git clone https://github.com/Jiyungi/gamed_resume.git
 cd gamed_resume
 ```
 
-2. Or, download the ZIP file and open the project in VS Code:
+If you prefer, click **Code > Download ZIP** on the GitHub page and unzip the folder.
 
-  Open VS Code and choose `File > Open...` and select the `gamed_resume` folder.
+2) Open in VS Code
 
-3. Run the project locally (two easy options):
+- Install Visual Studio Code from https://code.visualstudio.com if you don't have it.
+- Open the folder from VS Code: `File > Open Folder...` and select the `gamed_resume` folder.
+- Or, from the terminal run `code .` if the `code` command is set up.
 
-- Option A — Live Server (recommended for beginners):
-  - Install the **Live Server** extension in VS Code (Extensions view ▶ search "Live Server").
-  - Open `index.html` in the editor, right-click the file and choose `Open with Live Server`.
+3) Run the game locally (two options)
 
-- Option B — Simple Python server (no extensions):
-  - From the project folder, run:
+- Option A — Live Server (easy)
+  - In VS Code, install the **Live Server** extension.
+  - Open `index.html`, right-click and choose **Open with Live Server**.
 
+- Option B — Simple Python server
+  - From the project folder run:
 ```bash
 python3 -m http.server 8000
 ```
-  - Open your browser to http://localhost:8000 and click `index.html`.
+  - Open your browser at `http://localhost:8000` and click `index.html`.
 
-4. Play and iterate
+4) Quick tips for editing and testing
 
-- Use the browser DevTools (Console) to see any errors.
-- When you change images or scripts, refresh the page (or use Live Server's auto-refresh).
+- After changing images, text, or scripts, refresh the browser.
+- Use the browser Console to see errors.
+- If assets do not update, try a hard refresh or clear the browser cache.
 
-5. Publish on GitHub and deploy to the web
+5) Publish to GitHub Pages (simple steps)
 
-- After making changes, run these commands to push them to your GitHub repository:
+- Create a GitHub repository (or fork this repo) on github.com.
+- Push your files to your repo:
 ```bash
 git add .
-git commit -m "name of the change"
+git commit -m "My changes"
 git push origin main
 ```
-- Then, go to Settings and select Pages to deploy on GitHub Pages
-  - Make sure to deploy from the branch you developed on (e.g., main).
+- On GitHub, go to `Settings > Pages`. Choose branch `main` and folder `/ (root)`, then save.
+- Your site will appear at `https://<your-username>.github.io/<repo>` within minutes.
+
+If you are new to GitHub: use the website buttons **Fork**, **New repository**, or **Upload files**. Then follow the push steps above after cloning your repo.
 
 **VS Code setup tips**
 
@@ -114,6 +126,65 @@ git push origin main
   - Keep backups of original assets before replacing them.
   - Follow the naming conventions used in `data/` and code to avoid reference mismatches.
   - If you add many new assets, consider adding a short manifest file or updating a top-level comment in `data/` to document them.
+
+
+## What You Can Customize (examples)
+
+The list below shows common files or folders you can edit to change visuals, text, and simple game data. These are examples — exact file names or locations may vary between projects. Look for files that perform the described function if the names differ.
+
+- Example: `npcs.js` (or the file that contains NPC dialogue)
+  - What it controls: NPC dialogue and lines displayed during interactions.
+  - What not to modify: core NPC engine functions or the data-format structure expected by the renderer.
+
+- Example: `images/` (replace character sprites and item images)
+  - What it controls: visual appearance of characters, items, tiles, and decorations.
+  - What not to modify: filenames referenced by `data/` unless you update those references accordingly.
+
+- Example: `classes/Heart.js` or `js/index.js` (change number of hearts)
+  - What it controls: how many health hearts are displayed and the UI for player health.
+  - What not to modify: other game-health or respawn engine logic unless you know the interactions.
+
+-- Example: `index.html` (modify intro text)
+  - What it controls: the page title, introductory text, and any static markup shown before the game loads.
+  - What not to modify: core script and stylesheet includes unless you understand dependency order.
+
+## Using AI to help customize
+
+- You can ask an AI assistant to help edit this project.
+- Paste or point the AI to the files you want to change (for example `npcs.js` or `index.html`).
+- Tell the AI exactly what you want. Examples:
+  - "Change NPC dialogue to friendly tone. Update `data/npcs.js`."
+  - "Replace player sprite with `images/player_new.png`. Update sprite path only."
+  - "Increase hearts to 5 in `classes/Heart.js`. Do not change other files."
+- Ask the AI to only edit content files (text, images, simple constants).
+- Ask the AI to avoid changing core engine code in `classes/`, `js/`, or `data/` unless you ask for that specifically.
+- Always make a backup before applying changes. Save copies of files you plan to change.
+- Ask the AI to explain each edit in one short sentence. Then test the game locally.
+
+### Quick AI prompt examples
+
+- "Edit `data/npcs.js` to make NPCs introduce my name and role. Return only the updated file content."
+- "Update `index.html` intro text to: 'Hello — I'm Jane, a game designer.' Return the exact HTML snippet to replace."
+- "Change heart count to 5 in `classes/Heart.js`. Show the small code change and one-sentence reason."
+
+### Warning about automated edits
+
+- Do not accept large automated changes without review.
+- If unsure, ask the AI for a small patch (one file) first.
+- Test changes locally and keep backups.
+
+### Support for non-technical users
+
+- If you are new to this, ask the AI to only change text or image file paths.
+- If the AI suggests code edits, ask it to explain what will break if done wrong.
+
+### End AI section
+
+### Warning
+
+The items above are examples of safe, content-level edits. Do not edit files inside `classes/`, `js/`, or `data/` that implement core engine logic unless you understand the code — changing class methods, asset-loading, or data structure formats can break the game.
+
+If you're unsure, make a copy of the file before editing and test changes locally using the development server.
 
 
 
