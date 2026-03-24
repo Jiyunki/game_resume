@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Game — Setup Wizard</title>
+  <style>
+    @font-face {
+      font-family: 'PixelFont';
+      src: url('./font/pixelfont.ttf') format('truetype');
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e8e8e8;
+      font-family: 'PixelFont', monospace, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    .wizard {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px 20px;
+    }
+
+    h1 { font-size: 26px; margin-bottom: 8px; }
+    h2 { font-size: 18px; margin-bottom: 14px; }
+    h3 { font-size: 14px; margin-bottom: 8px; }
+
+    p { line-height: 1.6; }
+
+    /* ── Steps bar ───────────────────────────────── */
+    .steps-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 32px;
+    }
+    .steps-bar .s {
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 2px;
+      transition: background 0.3s;
+    }
+    .steps-bar .s.done   { background: #4ade80; }
+    .steps-bar .s.active { background: rgba(74,222,128,0.45); }
+
+    /* ── Step visibility ─────────────────────────── */
+    .step { display: none; }
+    .step.active { display: block; }
+
+    /* ── Cards ───────────────────────────────────── */
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+
+    /* ── Inputs ──────────────────────────────────── */
+    label {
+      display: block;
+      font-size: 12px;
+      opacity: 0.6;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 5px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 9px 11px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(74,222,128,0.5);
+    }
+    textarea { resize: vertical; min-height: 54px; }
+    input[type="number"] { width: 80px; }
+    select option { background: #1a1a1a; }
+
+    /* ── Buttons ─────────────────────────────────── */
+    button {
+      background: #4ade80;
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(74,222,128,0.25);
+    }
+    button:active { transform: translateY(0); }
+
+    button.secondary {
+      background: rgba(255,255,255,0.08);
+      color: #ddd;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    button.secondary:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+
+    button.danger {
+      background: rgba(255,80,80,0.12);
+      color: #ff7070;
+      border: 1px solid rgba(255,80,80,0.2);
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    button.danger:hover { box-shadow: none; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      align-items: center;
+    }
+
+    /* ── Chat ────────────────────────────────────── */
+    #chat-messages {
+      height: 340px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 2px;
+      scroll-behavior: smooth;
+    }
+    .msg {
+      max-width: 88%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+    .msg.assistant {
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.18);
+      align-self: flex-start;
+    }
+    .msg.user {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      align-self: flex-end;
+    }
+    .msg.typing { opacity: 0.5; font-style: italic; }
+
+    #chat-input-row { display: flex; gap: 8px; }
+    #chat-input { flex: 1; }
+
+    /* ── Form editor ─────────────────────────────── */
+    .section-title {
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      opacity: 0.5;
+      text-transform: uppercase;
+      margin: 24px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .npc-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 12px;
+    }
+
+    .npc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .sprite-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .sprite-option {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      display: block;
+    }
+    .sprite-option:hover { border-color: rgba(255,255,255,0.35); }
+    .sprite-option.selected { border-color: #4ade80; }
+
+    .form-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: flex-end;
+    }
+    .form-row .field { flex: 1; }
+    .form-row .field-narrow { flex: 0 0 auto; }
+
+    .dialogues-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 8px;
+    }
+    .dialogue-item {
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+    }
+    .dialogue-item textarea { min-height: 40px; }
+
+    button.add-line-btn {
+      background: transparent;
+      color: rgba(255,255,255,0.45);
+      border: 1px dashed rgba(255,255,255,0.18);
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: normal;
+    }
+    button.add-line-btn:hover {
+      color: rgba(255,255,255,0.75);
+      border-color: rgba(255,255,255,0.35);
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* ── Download step ───────────────────────────── */
+    #config-preview {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 7px;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      overflow-x: auto;
+      overflow-y: auto;
+      white-space: pre;
+      max-height: 220px;
+      margin-bottom: 14px;
+      color: #b8f0c8;
+    }
+
+    .instructions {
+      background: rgba(74,222,128,0.04);
+      border: 1px solid rgba(74,222,128,0.14);
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin-top: 16px;
+    }
+    .instructions ol { padding-left: 18px; }
+    .instructions li { margin-bottom: 8px; font-size: 13px; line-height: 1.55; }
+    .instructions code {
+      background: rgba(255,255,255,0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    /* ── Deploy step ─────────────────────────────── */
+    .deploy-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      opacity: .35;
+      font-size: 12px;
+    }
+    .deploy-divider::before,
+    .deploy-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,0.2);
+    }
+
+    .deploy-status-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 13px;
+    }
+    .deploy-status-row .ds {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: .35;
+      transition: opacity 0.3s;
+    }
+    .deploy-status-row .ds.active { opacity: 1; }
+    .deploy-status-row .ds.done { opacity: .7; }
+    .ds-icon { width: 16px; text-align: center; }
+
+    #deploy-error { color: #ff7070; font-size: 12px; margin-top: 8px; display: none; }
+
+    #success-box {
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.3);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      margin-top: 14px;
+      display: none;
+    }
+    #success-box a {
+      font-size: 16px;
+      font-weight: bold;
+      display: block;
+      margin: 8px 0 4px;
+    }
+
+    /* ── Misc ────────────────────────────────────── */
+    .error-msg { color: #ff7070; font-size: 12px; margin-top: 6px; }
+    small { font-size: 12px; opacity: 0.6; }
+    a { color: #4ade80; }
+
+    #config-detected-banner {
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.25);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="wizard">
+
+  <!-- Steps progress bar -->
+  <div class="steps-bar">
+    <div class="s" id="bar-1"></div>
+    <div class="s" id="bar-2"></div>
+    <div class="s" id="bar-3"></div>
+    <div class="s" id="bar-4"></div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────
+       Step 1 — API Key
+  ──────────────────────────────────────────────── -->
+  <div class="step active" id="step-api">
+    <h1>Resume Game Setup</h1>
+    <p style="opacity:.65; margin: 10px 0 24px; font-size:14px; line-height:1.7">
+      Customize this game to tell your story.<br>
+      An AI chatbot will ask you questions and write the NPC dialogues — you can edit everything afterwards.
+    </p>
+
+    <div class="card">
+      <label>Your Claude API Key</label>
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+      <p style="margin-top:8px">
+        <small>Used only in your browser — never stored or sent anywhere else.
+          Get a key at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>
+        </small>
+      </p>
+    </div>
+    <div id="api-error" class="error-msg" style="display:none"></div>
+
+    <div class="btn-row">
+      <button id="start-chat-btn">Start with AI →</button>
+      <button class="secondary" id="skip-ai-btn">Skip AI — Use Template</button>
+    </div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────
+       Step 2 — Chat
+  ──────────────────────────────────────────────── -->
+  <div class="step" id="step-chat">
+    <h1>Tell Claude about yourself</h1>
+    <p style="opacity:.65; margin: 8px 0 16px; font-size:13px">
+      Claude will ask questions and write NPC dialogues for you.
+      Answer as much or as little as you like.
+    </p>
+
+    <div class="card" style="padding:16px">
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Type your answer...">
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+
+    <div id="config-detected-banner">
+      ✓ Config generated! Redirecting to the editor…
+    </div>
+
+    <div class="btn-row" style="margin-top:14px">
+      <button class="secondary" id="generate-btn">Generate Config Now →</button>
+      <small style="line-height:1.5">or wait — Claude generates it automatically when it has enough info</small>
+    </div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────
+       Step 3 — Form Editor
+  ──────────────────────────────────────────────── -->
+  <div class="step" id="step-form">
+    <h1>Fine-tune your game</h1>
+    <p style="opacity:.65; margin: 8px 0 20px; font-size:13px">
+      Edit any field. Changes here only affect the downloaded config — the original game is untouched.
+    </p>
+
+    <div class="section-title">Game Info</div>
+    <div class="card">
+      <div style="margin-bottom:12px">
+        <label>Game Title</label>
+        <input type="text" id="form-title" placeholder="e.g. Alex's Resume Game">
+      </div>
+      <div>
+        <label>Intro Description</label>
+        <textarea id="form-description" rows="2" placeholder="Shown on the start screen (1–2 sentences)"></textarea>
+      </div>
+    </div>
+
+    <div class="section-title">Characters (NPCs)</div>
+    <div id="npc-list"></div>
+    <button class="secondary" id="add-npc-btn" style="width:100%; margin-bottom:4px">+ Add another character</button>
+
+    <div class="btn-row">
+      <button id="goto-download-btn">Download Config →</button>
+      <button class="secondary" id="back-to-chat-btn">← Back to Chat</button>
+    </div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────
+       Step 4 — Deploy
+  ──────────────────────────────────────────────── -->
+  <div class="step" id="step-download">
+    <h1>Deploy your game</h1>
+    <p style="opacity:.65; margin: 8px 0 18px; font-size:13px">
+      Auto-deploy to GitHub Pages in one click, or download the config file manually.
+    </p>
+
+    <!-- Option A: GitHub auto-deploy -->
+    <div class="card">
+      <h2 style="margin-bottom:4px">🚀 Auto-deploy to GitHub Pages</h2>
+      <p style="opacity:.6; font-size:13px; margin-bottom:16px">
+        We'll fork the template and publish your game at
+        <em>username</em>.github.io/gamed_resume — no downloads needed.
+      </p>
+
+      <div style="margin-bottom:12px">
+        <label>Your GitHub Username</label>
+        <input type="text" id="gh-username" placeholder="e.g. alexsmith" autocomplete="off">
+      </div>
+      <div style="margin-bottom:4px">
+        <label>Personal Access Token (classic)</label>
+        <input type="password" id="gh-token" placeholder="ghp_..." autocomplete="off">
+      </div>
+      <p style="margin-bottom:14px">
+        <small>Needs <strong>repo</strong> scope. &nbsp;
+          <a href="https://github.com/settings/tokens/new?scopes=repo&description=Resume+Game+Setup" target="_blank" rel="noopener">
+            Create one here →
+          </a>
+          &nbsp;(your token is never stored or sent to anyone except GitHub)
+        </small>
+      </p>
+
+      <button id="deploy-btn">Deploy to GitHub Pages →</button>
+      <div id="deploy-error"></div>
+
+      <div class="deploy-status-row" id="deploy-status" style="display:none">
+        <div class="ds" id="ds-fork"><span class="ds-icon">○</span> Forking template repository…</div>
+        <div class="ds" id="ds-wait"><span class="ds-icon">○</span> Waiting for fork to be ready…</div>
+        <div class="ds" id="ds-upload"><span class="ds-icon">○</span> Uploading your config…</div>
+        <div class="ds" id="ds-pages"><span class="ds-icon">○</span> Enabling GitHub Pages…</div>
+      </div>
+
+      <div id="success-box">
+        <p style="opacity:.7; font-size:13px">Your game is live at:</p>
+        <a id="success-url" href="#" target="_blank" rel="noopener"></a>
+        <p style="opacity:.5; font-size:12px; margin-top:4px">
+          GitHub Pages may take 1–2 minutes to finish building.
+        </p>
+      </div>
+    </div>
+
+    <div class="deploy-divider">or download manually</div>
+
+    <!-- Option B: Manual download -->
+    <div class="card">
+      <h2 style="margin-bottom:12px">⬇ Download config.js</h2>
+      <pre id="config-preview"></pre>
+      <div class="btn-row" style="margin-top:0">
+        <button id="download-btn">Download config.js</button>
+        <button class="secondary" id="copy-btn">Copy to Clipboard</button>
+      </div>
+      <div class="instructions" style="margin-top:14px">
+        <ol>
+          <li>Download <code>config.js</code> and place it in the root of your forked repo (same folder as <code>index.html</code>).</li>
+          <li>Commit and push the file.</li>
+          <li>Enable GitHub Pages in your repo Settings → Pages → Deploy from branch → <code>main</code>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:4px">
+      <button class="secondary" id="back-to-form-btn">← Edit</button>
+    </div>
+  </div>
+
+</div><!-- .wizard -->
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ← Template owner: update these if you fork this repo under a different name
+const TEMPLATE_OWNER = 'jiyunkim'
+const TEMPLATE_REPO  = 'gamed_resume'
+
+const SPRITES = ['villager_2', 'villager_4', 'villager_6', 'villager_7']
+
+const DEFAULT_POSITIONS = [
+  { tileX: 5,  tileY: 6,  patrolRange: 48, speed: 24 },
+  { tileX: 22, tileY: 10, patrolRange: 48, speed: 24 },
+  { tileX: 3,  tileY: 15, patrolRange: 20, speed: 24 },
+  { tileX: 20, tileY: 20, patrolRange: 0,  speed: 0  },
+]
+
+const TEMPLATE_CONFIG = {
+  title: "Your Name's Resume Game",
+  description: "An interactive resume — explore the map and talk to the characters to learn more about me.",
+  npcs: [
+    { sprite: 'villager_7', ...DEFAULT_POSITIONS[0], dialogues: ["Hi! I'm a friend of [Your Name].", "They're amazing at [skill].", "You should definitely talk to them!"] },
+    { sprite: 'villager_6', ...DEFAULT_POSITIONS[1], dialogues: ["I worked with [Name] on [project].", "They pick things up really fast.", "I wonder where they'll go next."] },
+    { sprite: 'villager_4', ...DEFAULT_POSITIONS[2], dialogues: ["Hi, I'm [name] — I met [them] through [context].", "One thing that stands out is [quality].", "You're lucky to have found them."] },
+    { sprite: 'villager_2', ...DEFAULT_POSITIONS[3], dialogues: ["Here's a fun fact about [Name].", "They once [interesting thing].", "Pretty impressive, right?"] },
+  ]
+}
+
+const SYSTEM_PROMPT = `You are an assistant helping someone customize a "resume game" — an interactive portfolio where NPCs (non-player characters) tell the player about the game's creator through dialogue.
+
+Your goal is to collect information and write NPC dialogue that highlights the creator's experience and personality.
+
+Collect (conversationally, not all at once):
+1. The creator's name
+2. A short game title (e.g. "Alex's World") and a 1-sentence description
+3. Up to 4 people — friends, colleagues, mentors — who can vouch for the creator. For each person get: their name + relationship, and 2-4 things they would say.
+
+Dialogue guidelines:
+- Each line: 1–2 short sentences, max ~120 characters
+- First-person perspective, referring to the creator by name
+- Highlight real experiences, skills, personality — conversational, NOT resume bullets
+
+When you have enough info (at minimum: a name + 1 character), wrap the JSON config in <config></config> tags:
+
+<config>
+{
+  "title": "...",
+  "description": "...",
+  "npcs": [
+    {
+      "sprite": "villager_7",
+      "tileX": 5,
+      "tileY": 6,
+      "patrolRange": 48,
+      "speed": 24,
+      "dialogues": ["line 1", "line 2", "line 3"]
+    }
+  ]
+}
+</config>
+
+Use these NPC positions/sprites in order:
+- NPC 1: sprite "villager_7", tileX:5, tileY:6, patrolRange:48, speed:24
+- NPC 2: sprite "villager_6", tileX:22, tileY:10, patrolRange:48, speed:24
+- NPC 3: sprite "villager_4", tileX:3, tileY:15, patrolRange:20, speed:24
+- NPC 4: sprite "villager_2", tileX:20, tileY:20, patrolRange:0, speed:0
+
+Start by greeting warmly and asking for the creator's name.`
+
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let apiKey = ''
+let conversationHistory = []
+let currentConfig = null
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step navigation
+// ─────────────────────────────────────────────────────────────────────────────
+const STEP_IDS = ['step-api', 'step-chat', 'step-form', 'step-download']
+
+function goToStep(idx) {
+  STEP_IDS.forEach((id, i) => {
+    document.getElementById(id).classList.toggle('active', i === idx)
+    const bar = document.getElementById(`bar-${i + 1}`)
+    bar.className = 's' + (i < idx ? ' done' : i === idx ? ' active' : '')
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 1 — API key
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('start-chat-btn').addEventListener('click', async () => {
+  const key = document.getElementById('api-key').value.trim()
+  const errEl = document.getElementById('api-error')
+
+  if (!key) {
+    errEl.textContent = 'Please enter your API key.'
+    errEl.style.display = 'block'
+    return
+  }
+  if (!key.startsWith('sk-ant-')) {
+    errEl.textContent = 'API key should start with "sk-ant-". Check console.anthropic.com.'
+    errEl.style.display = 'block'
+    return
+  }
+
+  apiKey = key
+  errEl.style.display = 'none'
+  goToStep(1)
+  await startChat()
+})
+
+document.getElementById('api-key').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('start-chat-btn').click()
+})
+
+document.getElementById('skip-ai-btn').addEventListener('click', () => {
+  currentConfig = JSON.parse(JSON.stringify(TEMPLATE_CONFIG))
+  renderForm(currentConfig)
+  goToStep(2)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 2 — Chat
+// ─────────────────────────────────────────────────────────────────────────────
+async function startChat() {
+  conversationHistory = []
+  const kickoff = { role: 'user', content: "Hello! Let's get started." }
+  conversationHistory.push(kickoff)
+
+  const reply = await callClaude(conversationHistory)
+  if (reply) addChatMsg('assistant', reply)
+}
+
+function addChatMsg(role, text) {
+  const container = document.getElementById('chat-messages')
+  const div = document.createElement('div')
+  div.className = `msg ${role}`
+  div.textContent = text
+  container.appendChild(div)
+  container.scrollTop = container.scrollHeight
+  return div
+}
+
+async function callClaude(messages) {
+  const container = document.getElementById('chat-messages')
+
+  // Typing indicator
+  const typingDiv = document.createElement('div')
+  typingDiv.className = 'msg assistant typing'
+  typingDiv.textContent = '…'
+  container.appendChild(typingDiv)
+  container.scrollTop = container.scrollHeight
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-ipc': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5',
+        max_tokens: 1200,
+        system: SYSTEM_PROMPT,
+        messages,
+      })
+    })
+
+    typingDiv.remove()
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error?.message || `API error ${res.status}`)
+    }
+
+    const data = await res.json()
+    const text = (data.content[0]?.text || '').trim()
+    conversationHistory.push({ role: 'assistant', content: text })
+    return text
+
+  } catch (e) {
+    typingDiv.remove()
+    addChatMsg('assistant', `Error: ${e.message}`)
+    return null
+  }
+}
+
+document.getElementById('send-btn').addEventListener('click', sendUserMessage)
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage() }
+})
+
+async function sendUserMessage() {
+  const input = document.getElementById('chat-input')
+  const text = input.value.trim()
+  if (!text) return
+
+  input.value = ''
+  addChatMsg('user', text)
+  conversationHistory.push({ role: 'user', content: text })
+
+  const reply = await callClaude(conversationHistory)
+  if (reply) {
+    addChatMsg('assistant', reply)
+    tryExtractConfig(reply)
+  }
+}
+
+document.getElementById('generate-btn').addEventListener('click', async () => {
+  const prompt = "Based on what I've shared, please generate the config JSON now. Make reasonable assumptions to fill any gaps."
+  addChatMsg('user', prompt)
+  conversationHistory.push({ role: 'user', content: prompt })
+
+  const reply = await callClaude(conversationHistory)
+  if (reply) {
+    addChatMsg('assistant', reply)
+    tryExtractConfig(reply)
+  }
+})
+
+function tryExtractConfig(text) {
+  const match = text.match(/<config>([\s\S]*?)<\/config>/)
+  if (!match) return
+
+  try {
+    const config = JSON.parse(match[1].trim())
+    currentConfig = config
+
+    const banner = document.getElementById('config-detected-banner')
+    banner.style.display = 'block'
+
+    setTimeout(() => {
+      renderForm(config)
+      goToStep(2)
+      banner.style.display = 'none'
+    }, 900)
+  } catch (e) {
+    console.error('Config parse failed:', e)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3 — Form editor
+// ─────────────────────────────────────────────────────────────────────────────
+function renderForm(config) {
+  document.getElementById('form-title').value = config.title || ''
+  document.getElementById('form-description').value = config.description || ''
+
+  const list = document.getElementById('npc-list')
+  list.innerHTML = ''
+
+  const npcs = config.npcs || []
+  npcs.forEach((npc, i) => list.appendChild(createNpcCard(i, npc)))
+
+  updateAddNpcButton()
+  drawAllSprites()
+}
+
+function updateAddNpcButton() {
+  const btn = document.getElementById('add-npc-btn')
+  const count = document.querySelectorAll('.npc-card').length
+  btn.style.display = count >= 4 ? 'none' : 'block'
+}
+
+document.getElementById('add-npc-btn').addEventListener('click', () => {
+  const count = document.querySelectorAll('.npc-card').length
+  if (count >= 4) return
+  const pos = DEFAULT_POSITIONS[Math.min(count, 3)]
+  const npc = { sprite: SPRITES[Math.min(count, SPRITES.length - 1)], ...pos, dialogues: [''] }
+  document.getElementById('npc-list').appendChild(createNpcCard(count, npc))
+  updateAddNpcButton()
+  drawAllSprites()
+})
+
+document.getElementById('goto-download-btn').addEventListener('click', () => {
+  currentConfig = buildConfigFromForm()
+  renderDownloadPreview(currentConfig)
+  goToStep(3)
+})
+
+document.getElementById('back-to-chat-btn').addEventListener('click', () => {
+  goToStep(1)
+})
+
+function createNpcCard(idx, npc) {
+  const card = document.createElement('div')
+  card.className = 'npc-card'
+  card.dataset.idx = idx
+
+  // Header
+  const header = document.createElement('div')
+  header.className = 'npc-header'
+  const title = document.createElement('strong')
+  title.style.fontSize = '14px'
+  title.textContent = `Character ${idx + 1}`
+  header.appendChild(title)
+  if (idx > 0) {
+    const removeBtn = document.createElement('button')
+    removeBtn.className = 'danger'
+    removeBtn.textContent = 'Remove'
+    removeBtn.addEventListener('click', () => {
+      card.remove()
+      renumberNpcCards()
+      updateAddNpcButton()
+    })
+    header.appendChild(removeBtn)
+  }
+  card.appendChild(header)
+
+  // Sprite selector
+  const spriteLabel = document.createElement('label')
+  spriteLabel.textContent = 'Sprite'
+  card.appendChild(spriteLabel)
+
+  const spriteSelector = document.createElement('div')
+  spriteSelector.className = 'sprite-selector'
+  spriteSelector.style.marginBottom = '14px'
+
+  SPRITES.forEach(s => {
+    const canvas = document.createElement('canvas')
+    canvas.className = 'sprite-option' + (npc.sprite === s ? ' selected' : '')
+    canvas.dataset.sprite = s
+    canvas.width = 48
+    canvas.height = 48
+    canvas.title = s
+    canvas.addEventListener('click', () => {
+      spriteSelector.querySelectorAll('.sprite-option').forEach(c => c.classList.remove('selected'))
+      canvas.classList.add('selected')
+    })
+    spriteSelector.appendChild(canvas)
+  })
+  card.appendChild(spriteSelector)
+
+  // Position + patrol row
+  const posRow = document.createElement('div')
+  posRow.className = 'form-row'
+
+  const fields = [
+    { label: 'Tile X', cls: 'tile-x', val: npc.tileX ?? DEFAULT_POSITIONS[Math.min(idx,3)].tileX, min: 1, max: 27 },
+    { label: 'Tile Y', cls: 'tile-y', val: npc.tileY ?? DEFAULT_POSITIONS[Math.min(idx,3)].tileY, min: 1, max: 27 },
+    { label: 'Patrol px', cls: 'patrol-range', val: npc.patrolRange ?? DEFAULT_POSITIONS[Math.min(idx,3)].patrolRange, min: 0, max: 128 },
+  ]
+  fields.forEach(({ label: lbl, cls, val, min, max }) => {
+    const wrap = document.createElement('div')
+    wrap.className = 'field-narrow'
+    const l = document.createElement('label')
+    l.textContent = lbl
+    const inp = document.createElement('input')
+    inp.type = 'number'
+    inp.className = cls
+    inp.value = val
+    inp.min = min
+    inp.max = max
+    wrap.appendChild(l)
+    wrap.appendChild(inp)
+    posRow.appendChild(wrap)
+  })
+  card.appendChild(posRow)
+
+  // Dialogues
+  const dlgLabel = document.createElement('label')
+  dlgLabel.textContent = 'Dialogue Lines'
+  dlgLabel.style.marginBottom = '6px'
+  card.appendChild(dlgLabel)
+
+  const dlgList = document.createElement('div')
+  dlgList.className = 'dialogues-list'
+
+  const dialogues = (npc.dialogues && npc.dialogues.length) ? npc.dialogues : ['']
+  dialogues.forEach(d => dlgList.appendChild(createDialogueItem(d)))
+  card.appendChild(dlgList)
+
+  const addLineBtn = document.createElement('button')
+  addLineBtn.className = 'add-line-btn'
+  addLineBtn.textContent = '+ Add line'
+  addLineBtn.addEventListener('click', () => {
+    dlgList.appendChild(createDialogueItem(''))
+  })
+  card.appendChild(addLineBtn)
+
+  return card
+}
+
+function createDialogueItem(text) {
+  const item = document.createElement('div')
+  item.className = 'dialogue-item'
+
+  const ta = document.createElement('textarea')
+  ta.className = 'dialogue-input'
+  ta.rows = 2
+  ta.value = text
+  ta.placeholder = 'e.g. "I know [Name] from work — they are great at…"'
+
+  const removeBtn = document.createElement('button')
+  removeBtn.className = 'danger'
+  removeBtn.textContent = '✕'
+  removeBtn.style.padding = '4px 8px'
+  removeBtn.addEventListener('click', () => {
+    const list = item.parentElement
+    if (list && list.querySelectorAll('.dialogue-item').length > 1) item.remove()
+  })
+
+  item.appendChild(ta)
+  item.appendChild(removeBtn)
+  return item
+}
+
+function renumberNpcCards() {
+  document.querySelectorAll('.npc-card').forEach((card, i) => {
+    card.dataset.idx = i
+    const t = card.querySelector('strong')
+    if (t) t.textContent = `Character ${i + 1}`
+  })
+}
+
+function drawAllSprites() {
+  document.querySelectorAll('.sprite-option').forEach(canvas => {
+    const sprite = canvas.dataset.sprite
+    if (!sprite) return
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    img.onload = () => {
+      try { ctx.imageSmoothingEnabled = false } catch (e) {}
+      ctx.clearRect(0, 0, 48, 48)
+      ctx.drawImage(img, 0, 0, 16, 16, 0, 0, 48, 48)
+    }
+    img.src = `./images/${sprite}.png`
+  })
+}
+
+function buildConfigFromForm() {
+  const title = document.getElementById('form-title').value.trim()
+  const description = document.getElementById('form-description').value.trim()
+  const npcs = []
+
+  document.querySelectorAll('.npc-card').forEach((card, i) => {
+    const sprite = card.querySelector('.sprite-option.selected')?.dataset.sprite
+      || SPRITES[Math.min(i, SPRITES.length - 1)]
+    const tileX = parseInt(card.querySelector('.tile-x').value) || DEFAULT_POSITIONS[Math.min(i, 3)].tileX
+    const tileY = parseInt(card.querySelector('.tile-y').value) || DEFAULT_POSITIONS[Math.min(i, 3)].tileY
+    const patrolRange = parseInt(card.querySelector('.patrol-range').value) || 0
+    const speed = patrolRange > 0 ? 24 : 0
+
+    const dialogues = []
+    card.querySelectorAll('.dialogue-input').forEach(ta => {
+      const t = ta.value.trim()
+      if (t) dialogues.push(t)
+    })
+
+    npcs.push({ sprite, tileX, tileY, patrolRange, speed, dialogues })
+  })
+
+  return { title, description, npcs }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 4 — Download
+// ─────────────────────────────────────────────────────────────────────────────
+function generateConfigJs(config) {
+  const json = JSON.stringify(config, null, 2)
+  return `// Generated by Resume Game Setup Wizard\n// Edit this file or re-run setup.html to regenerate.\nwindow.GAME_CONFIG = ${json};\n`
+}
+
+function renderDownloadPreview(config) {
+  document.getElementById('config-preview').textContent = generateConfigJs(config)
+}
+
+document.getElementById('download-btn').addEventListener('click', () => {
+  const js = generateConfigJs(buildConfigFromForm())
+  const blob = new Blob([js], { type: 'text/javascript' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'config.js'
+  a.click()
+  URL.revokeObjectURL(url)
+})
+
+document.getElementById('copy-btn').addEventListener('click', async () => {
+  const js = generateConfigJs(buildConfigFromForm())
+  await navigator.clipboard.writeText(js)
+  const btn = document.getElementById('copy-btn')
+  btn.textContent = '✓ Copied!'
+  setTimeout(() => { btn.textContent = 'Copy to Clipboard' }, 2000)
+})
+
+document.getElementById('back-to-form-btn').addEventListener('click', () => {
+  goToStep(2)
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 4 — GitHub auto-deploy
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('deploy-btn').addEventListener('click', deployToGitHub)
+
+async function deployToGitHub() {
+  const username = document.getElementById('gh-username').value.trim()
+  const token    = document.getElementById('gh-token').value.trim()
+  const errEl    = document.getElementById('deploy-error')
+
+  errEl.style.display = 'none'
+
+  if (!username) return showDeployError('Please enter your GitHub username.')
+  if (!token)    return showDeployError('Please enter your Personal Access Token.')
+
+  const configJs = generateConfigJs(buildConfigFromForm())
+
+  document.getElementById('deploy-status').style.display = 'flex'
+  document.getElementById('success-box').style.display   = 'none'
+  document.getElementById('deploy-btn').disabled = true
+
+  try {
+    setStep('fork', 'active')
+    await ghFork(username, token)
+
+    setStep('fork', 'done')
+    setStep('wait', 'active')
+    await ghWaitForFork(username, token)
+
+    setStep('wait', 'done')
+    setStep('upload', 'active')
+    await ghUploadFile(username, token, 'config.js', configJs)
+
+    setStep('upload', 'done')
+    setStep('pages', 'active')
+    await ghEnablePages(username, token)
+    setStep('pages', 'done')
+
+    const url = `https://${username}.github.io/${TEMPLATE_REPO}`
+    const box  = document.getElementById('success-box')
+    const link = document.getElementById('success-url')
+    link.href        = url
+    link.textContent = url
+    box.style.display = 'block'
+
+  } catch (e) {
+    showDeployError(e.message)
+  } finally {
+    document.getElementById('deploy-btn').disabled = false
+  }
+}
+
+function setStep(key, state) {
+  const el   = document.getElementById(`ds-${key}`)
+  const icon = el.querySelector('.ds-icon')
+  el.className = `ds ${state}`
+  icon.textContent = state === 'done' ? '✓' : state === 'active' ? '●' : '○'
+}
+
+function showDeployError(msg) {
+  const el = document.getElementById('deploy-error')
+  el.textContent = msg
+  el.style.display = 'block'
+}
+
+// ── GitHub API helpers ───────────────────────────────────────────────────────
+
+async function ghFetch(path, token, opts = {}) {
+  const res = await fetch(`https://api.github.com${path}`, {
+    method: opts.method || 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+    },
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  })
+  return res
+}
+
+async function ghFork(username, token) {
+  const res = await ghFetch(`/repos/${TEMPLATE_OWNER}/${TEMPLATE_REPO}/forks`, token, {
+    method: 'POST',
+    body: {},
+  })
+  // 202 = accepted (fork queued), 200 = already forked — both fine
+  if (!res.ok && res.status !== 202) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Fork failed: ${err.message || `HTTP ${res.status}`}`)
+  }
+}
+
+async function ghWaitForFork(username, token) {
+  for (let i = 0; i < 20; i++) {
+    await sleep(3000)
+    const res = await ghFetch(`/repos/${username}/${TEMPLATE_REPO}`, token)
+    if (res.ok) return
+  }
+  throw new Error('Fork is taking too long. Wait a minute then try again, or fork manually at github.com.')
+}
+
+async function ghUploadFile(username, token, filePath, content) {
+  // Get existing SHA if the file already exists (needed for updates)
+  let sha
+  const check = await ghFetch(`/repos/${username}/${TEMPLATE_REPO}/contents/${filePath}`, token)
+  if (check.ok) {
+    const existing = await check.json()
+    sha = existing.sha
+  }
+
+  const body = {
+    message: 'Configure game via setup wizard',
+    content: btoa(unescape(encodeURIComponent(content))), // UTF-8 safe base64
+  }
+  if (sha) body.sha = sha
+
+  const res = await ghFetch(`/repos/${username}/${TEMPLATE_REPO}/contents/${filePath}`, token, {
+    method: 'PUT',
+    body,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Upload failed: ${err.message || `HTTP ${res.status}`}`)
+  }
+}
+
+async function ghEnablePages(username, token) {
+  const res = await ghFetch(`/repos/${username}/${TEMPLATE_REPO}/pages`, token, {
+    method: 'POST',
+    body: { source: { branch: 'main', path: '/' } },
+  })
+  // 409 = Pages already enabled, 422 = already configured — both fine
+  if (!res.ok && res.status !== 409 && res.status !== 422) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Couldn't enable Pages: ${err.message || `HTTP ${res.status}`}. Enable it manually in repo Settings → Pages.`)
+  }
+}
+
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms))
+}
+</script>
+</body>
+</html>

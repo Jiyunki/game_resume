@@ -382,6 +382,7 @@
 <script src="./data/l_Houses.js"></script>
 <script src="./data/l_House_Decorations.js"></script>
 <script src="./data/l_Characters.js"></script>
+<script src="./config.js"></script>
 <script src="./data/npcs.js"></script>
 <script src="./data/l_Collisions.js"></script>
 <script src="./data/collisions.js"></script>
@@ -396,6 +397,20 @@
 <script src="./js/index.js"></script>
 <script src="./js/eventListeners.js"></script>
 <script>
+  // Apply GAME_CONFIG overrides to start-screen text (title, description)
+  ;(function() {
+    var cfg = window.GAME_CONFIG
+    if (!cfg) return
+    if (cfg.title) {
+      var t = document.getElementById('start-title')
+      if (t) t.textContent = cfg.title
+    }
+    if (cfg.description) {
+      var d = document.querySelector('#start-screen .panel > p')
+      if (d) d.textContent = cfg.description
+    }
+  })()
+
   // Draw preview canvases showing the first frame of spritesheets
   (function() {
     const drawPreview = (canvasId, imageSrc, slice) => {

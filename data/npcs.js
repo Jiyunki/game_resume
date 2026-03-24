@@ -101,3 +101,30 @@ const NPC_DEFS = [
 ]
 
 window.NPC_DEFS = NPC_DEFS
+
+// If config.js provided a GAME_CONFIG with custom NPCs, override the defaults.
+if (window.GAME_CONFIG && Array.isArray(window.GAME_CONFIG.npcs) && window.GAME_CONFIG.npcs.length > 0) {
+  window.NPC_DEFS = window.GAME_CONFIG.npcs.map(function(npc) {
+    var pr = (npc.patrolRange !== undefined ? npc.patrolRange : 48)
+    return {
+      tileX: npc.tileX,
+      tileY: npc.tileY,
+      sprite: './images/' + npc.sprite + '.png',
+      dialogues: npc.dialogues || [],
+      patrol: pr > 0
+        ? [{ x: npc.tileX * 16, y: npc.tileY * 16 }, { x: npc.tileX * 16 + pr, y: npc.tileY * 16 }]
+        : null,
+      speed: npc.speed !== undefined ? npc.speed : (pr > 0 ? 24 : 0),
+      spriteConfig: {
+        animations: {
+          walkDown:  { x: 0,  y: 0, width: 16, height: 16, frameCount: 4 },
+          walkUp:    { x: 16, y: 0, width: 16, height: 16, frameCount: 4 },
+          walkLeft:  { x: 32, y: 0, width: 16, height: 16, frameCount: 4 },
+          walkRight: { x: 48, y: 0, width: 16, height: 16, frameCount: 4 },
+        },
+        frameWidth: 16,
+        frameHeight: 16,
+      }
+    }
+  })
+}
