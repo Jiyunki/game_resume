@@ -467,25 +467,22 @@
         <em>username</em>.github.io/gamed_resume — no downloads needed.
       </p>
 
-      <div style="margin-bottom:12px">
-        <label>Your GitHub Username</label>
-        <input type="text" id="gh-username" placeholder="e.g. alexsmith" autocomplete="off">
+      <!-- Not connected -->
+      <div id="gh-connect-section">
+        <button id="gh-connect-btn">Connect GitHub →</button>
+        <p style="margin-top:10px"><small>You'll be redirected to GitHub to authorize. No password or token needed.</small></p>
       </div>
-      <div style="margin-bottom:4px">
-        <label>Personal Access Token (classic)</label>
-        <input type="password" id="gh-token" placeholder="ghp_..." autocomplete="off">
-      </div>
-      <p style="margin-bottom:14px">
-        <small>Needs <strong>repo</strong> scope. &nbsp;
-          <a href="https://github.com/settings/tokens/new?scopes=repo&description=Resume+Game+Setup" target="_blank" rel="noopener">
-            Create one here →
-          </a>
-          &nbsp;(your token is never stored or sent to anyone except GitHub)
-        </small>
-      </p>
 
-      <button id="deploy-btn">Deploy to GitHub Pages →</button>
-      <div id="deploy-error"></div>
+      <!-- Connected -->
+      <div id="gh-connected-section" style="display:none">
+        <p style="margin-bottom:14px; font-size:13px">
+          ✓ Connected as <strong id="gh-username-display"></strong>
+          &nbsp;<button class="secondary" id="gh-disconnect-btn" style="padding:3px 10px; font-size:12px">Disconnect</button>
+        </p>
+        <button id="deploy-btn">Deploy to GitHub Pages →</button>
+      </div>
+
+      <div id="deploy-error" class="error-msg" style="display:none"></div>
 
       <div class="deploy-status-row" id="deploy-status" style="display:none">
         <div class="ds" id="ds-fork"><span class="ds-icon">○</span> Forking template repository…</div>
@@ -494,7 +491,7 @@
         <div class="ds" id="ds-pages"><span class="ds-icon">○</span> Enabling GitHub Pages…</div>
       </div>
 
-      <div id="success-box">
+      <div id="success-box" style="display:none">
         <p style="opacity:.7; font-size:13px">Your game is live at:</p>
         <a id="success-url" href="#" target="_blank" rel="noopener"></a>
         <p style="opacity:.5; font-size:12px; margin-top:4px">
@@ -1025,19 +1022,66 @@ document.getElementById('back-to-form-btn').addEventListener('click', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 4 — GitHub auto-deploy
+// Step 4 — GitHub OAuth + auto-deploy
 // ─────────────────────────────────────────────────────────────────────────────
+const OAUTH_CLIENT_ID  = 'Ov23lisEcC91IW26DZIX'
+const OAUTH_WORKER_URL = 'https://resume-game-oauth.jiyun.workers.dev'
+
+let ghToken    = ''
+let ghUsername = ''
+
+// On page load: check if we're returning from GitHub OAuth (token in hash)
+;(function () {
+  const m = window.location.hash.match(/gh_token=([^&]+)/)
+  if (!m) return
+  ghToken = m[1]
+  history.replaceState(null, '', window.location.pathname + window.location.search)
+  fetchGhUsername()
+})()
+
+async function fetchGhUsername() {
+  try {
+    const res = await fetch('https://api.github.com/user', {
+      headers: { 'Authorization': `Bearer ${ghToken}`, 'Accept': 'application/vnd.github+json' }
+    })
+    if (!res.ok) { ghToken = ''; return }
+    const data = await res.json()
+    ghUsername = data.login
+    showGhConnected()
+  } catch (e) { ghToken = '' }
+}
+
+function showGhConnected() {
+  document.getElementById('gh-connect-section').style.display  = 'none'
+  document.getElementById('gh-connected-section').style.display = 'block'
+  document.getElementById('gh-username-display').textContent    = ghUsername
+}
+
+function showGhDisconnected() {
+  ghToken = ''; ghUsername = ''
+  document.getElementById('gh-connect-section').style.display   = 'block'
+  document.getElementById('gh-connected-section').style.display = 'none'
+  document.getElementById('deploy-status').style.display = 'none'
+  document.getElementById('success-box').style.display   = 'none'
+  document.getElementById('deploy-error').style.display  = 'none'
+}
+
+document.getElementById('gh-connect-btn').addEventListener('click', () => {
+  const state   = encodeURIComponent(window.location.href.split('#')[0])
+  const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&scope=repo&state=${state}`
+  window.location.href = authUrl
+})
+
+document.getElementById('gh-disconnect-btn').addEventListener('click', showGhDisconnected)
+
 document.getElementById('deploy-btn').addEventListener('click', deployToGitHub)
 
 async function deployToGitHub() {
-  const username = document.getElementById('gh-username').value.trim()
-  const token    = document.getElementById('gh-token').value.trim()
-  const errEl    = document.getElementById('deploy-error')
-
+  const errEl = document.getElementById('deploy-error')
   errEl.style.display = 'none'
 
-  if (!username) return showDeployError('Please enter your GitHub username.')
-  if (!token)    return showDeployError('Please enter your Personal Access Token.')
+  if (!ghToken)    return showDeployError('Please connect your GitHub account first.')
+  if (!ghUsername) return showDeployError('Could not determine your GitHub username. Try reconnecting.')
 
   const configJs = generateConfigJs(buildConfigFromForm())
 
@@ -1047,22 +1091,22 @@ async function deployToGitHub() {
 
   try {
     setStep('fork', 'active')
-    await ghFork(username, token)
+    await ghFork(ghUsername, ghToken)
 
     setStep('fork', 'done')
     setStep('wait', 'active')
-    await ghWaitForFork(username, token)
+    await ghWaitForFork(ghUsername, ghToken)
 
     setStep('wait', 'done')
     setStep('upload', 'active')
-    await ghUploadFile(username, token, 'config.js', configJs)
+    await ghUploadFile(ghUsername, ghToken, 'config.js', configJs)
 
     setStep('upload', 'done')
     setStep('pages', 'active')
-    await ghEnablePages(username, token)
+    await ghEnablePages(ghUsername, ghToken)
     setStep('pages', 'done')
 
-    const url = `https://${username}.github.io/${TEMPLATE_REPO}`
+    const url = `https://${ghUsername}.github.io/${TEMPLATE_REPO}`
     const box  = document.getElementById('success-box')
     const link = document.getElementById('success-url')
     link.href        = url
