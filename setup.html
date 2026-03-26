@@ -431,8 +431,9 @@
 
     <div class="btn-row" style="margin-top:14px">
       <button class="secondary" id="generate-btn">Generate Config Now →</button>
-      <small style="line-height:1.5">or wait — Claude generates it automatically when it has enough info</small>
+      <button class="secondary" id="chat-to-form-btn">← Edit form manually</button>
     </div>
+    <small style="line-height:1.5; display:block; margin-top:8px">or wait — Claude generates it automatically when it has enough info</small>
   </div>
 
   <!-- ────────────────────────────────────────────────
@@ -686,6 +687,7 @@ document.getElementById('start-chat-btn').addEventListener('click', async () => 
 
   apiKey = key
   errEl.style.display = 'none'
+  document.getElementById('back-to-chat-btn').style.display = ''
   goToStep(1)
   await startChat()
 })
@@ -697,6 +699,15 @@ document.getElementById('api-key').addEventListener('keydown', e => {
 document.getElementById('skip-ai-btn').addEventListener('click', () => {
   currentConfig = JSON.parse(JSON.stringify(TEMPLATE_CONFIG))
   renderForm(currentConfig)
+  document.getElementById('back-to-chat-btn').style.display = 'none'
+  goToStep(2)
+})
+
+document.getElementById('chat-to-form-btn').addEventListener('click', () => {
+  if (!currentConfig) {
+    currentConfig = JSON.parse(JSON.stringify(TEMPLATE_CONFIG))
+    renderForm(currentConfig)
+  }
   goToStep(2)
 })
 
