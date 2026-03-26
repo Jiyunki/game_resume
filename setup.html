@@ -660,6 +660,9 @@ let currentConfig = null
 const STEP_IDS = ['step-api', 'step-chat', 'step-form', 'step-download']
 
 function goToStep(idx) {
+  // Populate config preview whenever the deploy step becomes visible
+  if (idx === 3 && currentConfig) renderDownloadPreview(currentConfig)
+
   STEP_IDS.forEach((id, i) => {
     document.getElementById(id).classList.toggle('active', i === idx)
     const bar = document.getElementById(`bar-${i + 1}`)
