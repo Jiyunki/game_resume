@@ -28,7 +28,7 @@ export default {
 
       const returnUrl = state
         ? decodeURIComponent(state)
-        : 'https://jiyunkim.github.io/gamed_resume/setup.html'
+        : 'https://Jiyungi.github.io/game_resume/setup.html'
 
       // Pass token via URL fragment — never sent to any server
       return Response.redirect(`${returnUrl}#gh_token=${data.access_token}`, 302)
