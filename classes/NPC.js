@@ -198,9 +198,9 @@ class NPC {
         const aw = anim.width || cfg.frameWidth || Math.floor(this.image.width / aFrameCount)
         const ah = anim.height || cfg.frameHeight || Math.floor(this.image.height / (cfg.directions || 4))
 
-        // player-style uses vertical stacking for frames (same as `Player.draw`)
-        const srcX = anim.x || 0
-        const srcY = (anim.y || 0) + ah * this.currentFrame
+        // horizontal: frames advance left-to-right; vertical (default): frames advance top-to-bottom
+        const srcX = anim.horizontal ? (anim.x || 0) + aw * this.currentFrame : (anim.x || 0)
+        const srcY = anim.horizontal ? (anim.y || 0) : (anim.y || 0) + ah * this.currentFrame
 
         _drawImageNoSmooth(ctx, this.image, srcX, srcY, aw, ah, this.x, this.y, this.width, this.height)
         _drawDialogIcon(ctx)

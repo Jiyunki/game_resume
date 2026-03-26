@@ -162,10 +162,7 @@ window.addEventListener('keyup', (event) => {
       break
     case 'ArrowLeft':
       event.preventDefault()
-      // If dialog is open, don't modify movement flags for arrow keys
-      if (!(typeof dialogOpen !== 'undefined' && dialogOpen)) {
-        keys.a.pressed = false
-      }
+      keys.a.pressed = false
       break
     case 'ArrowDown':
       event.preventDefault()
@@ -173,10 +170,7 @@ window.addEventListener('keyup', (event) => {
       break
     case 'ArrowRight':
       event.preventDefault()
-      // If dialog is open, don't modify movement flags for arrow keys
-      if (!(typeof dialogOpen !== 'undefined' && dialogOpen)) {
-        keys.d.pressed = false
-      }
+      keys.d.pressed = false
       break
   }
 })
