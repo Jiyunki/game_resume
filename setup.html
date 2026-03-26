@@ -15,7 +15,7 @@
     body {
       background: #0d0d0d;
       color: #e8e8e8;
-      font-family: 'PixelFont', monospace, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
       padding-bottom: 60px;
     }
@@ -337,6 +337,22 @@
       margin: 8px 0 4px;
     }
 
+    /* ── Item upload slots ───────────────────────── */
+    .item-slots { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .item-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .item-slot label { font-size: 12px; opacity: .6; }
+    .item-slot input[type=file] { display: none; }
+    .item-slot-btn {
+      width: 56px; height: 56px; border-radius: 8px;
+      border: 2px dashed rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.04);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 22px; transition: border-color 0.2s;
+      overflow: hidden; padding: 0;
+    }
+    .item-slot-btn:hover { border-color: rgba(255,255,255,0.4); }
+    .item-slot-btn img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+
     /* ── Misc ────────────────────────────────────── */
     .error-msg { color: #ff7070; font-size: 12px; margin-top: 6px; }
     small { font-size: 12px; opacity: 0.6; }
@@ -444,6 +460,30 @@
     <div id="npc-list"></div>
     <button class="secondary" id="add-npc-btn" style="width:100%; margin-bottom:4px">+ Add another character</button>
 
+    <div class="section-title" style="margin-top:20px">Item Icons</div>
+    <div class="card">
+      <p style="font-size:12px; opacity:.6; margin-bottom:12px">
+        Icons dropped by enemies when defeated. Upload up to 3 images (PNG recommended), or leave blank to use the defaults (R, Python, JS).
+      </p>
+      <div class="item-slots" id="item-slots">
+        <div class="item-slot">
+          <button type="button" class="item-slot-btn" data-slot="0">+</button>
+          <input type="file" accept="image/*" data-slot="0">
+          <label>Item 1</label>
+        </div>
+        <div class="item-slot">
+          <button type="button" class="item-slot-btn" data-slot="1">+</button>
+          <input type="file" accept="image/*" data-slot="1">
+          <label>Item 2</label>
+        </div>
+        <div class="item-slot">
+          <button type="button" class="item-slot-btn" data-slot="2">+</button>
+          <input type="file" accept="image/*" data-slot="2">
+          <label>Item 3</label>
+        </div>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button id="goto-download-btn">Download Config →</button>
       <button class="secondary" id="back-to-chat-btn">← Back to Chat</button>
@@ -543,6 +583,9 @@ const TEMPLATE_OWNER = 'Jiyungi'
 const TEMPLATE_REPO  = 'game_resume'
 
 const SPRITES = ['villager_2', 'villager_4', 'villager_6', 'villager_7']
+
+// customItems[slot] = { filename, base64 } — populated when user uploads an image
+const customItems = [null, null, null]
 
 const DEFAULT_POSITIONS = [
   { tileX: 5,  tileY: 6,  patrolRange: 48, speed: 24 },
@@ -812,6 +855,31 @@ document.getElementById('add-npc-btn').addEventListener('click', () => {
   drawAllSprites()
 })
 
+// Item upload slots
+document.querySelectorAll('.item-slot-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const slot = parseInt(btn.dataset.slot)
+    document.querySelector(`.item-slot input[data-slot="${slot}"]`).click()
+  })
+})
+
+document.querySelectorAll('#item-slots input[type=file]').forEach(input => {
+  input.addEventListener('change', () => {
+    const slot = parseInt(input.dataset.slot)
+    const file = input.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target.result
+      const base64 = dataUrl.split(',')[1]
+      customItems[slot] = { filename: file.name, base64 }
+      const btn = document.querySelector(`.item-slot-btn[data-slot="${slot}"]`)
+      btn.innerHTML = `<img src="${dataUrl}" alt="${file.name}">`
+    }
+    reader.readAsDataURL(file)
+  })
+})
+
 document.getElementById('goto-download-btn').addEventListener('click', () => {
   currentConfig = buildConfigFromForm()
   renderDownloadPreview(currentConfig)
@@ -875,9 +943,7 @@ function createNpcCard(idx, npc) {
   const posRow = document.createElement('div')
   posRow.className = 'form-row'
 
-  const fields = [
-    { label: 'Patrol px', cls: 'patrol-range', val: npc.patrolRange ?? DEFAULT_POSITIONS[Math.min(idx,3)].patrolRange, min: 0, max: 128 },
-  ]
+  const fields = []
   fields.forEach(({ label: lbl, cls, val, min, max }) => {
     const wrap = document.createElement('div')
     wrap.className = 'field-narrow'
@@ -976,7 +1042,7 @@ function buildConfigFromForm() {
       || SPRITES[Math.min(i, SPRITES.length - 1)]
     const tileX = DEFAULT_POSITIONS[Math.min(i, 3)].tileX
     const tileY = DEFAULT_POSITIONS[Math.min(i, 3)].tileY
-    const patrolRange = parseInt(card.querySelector('.patrol-range').value) || 0
+    const patrolRange = DEFAULT_POSITIONS[Math.min(i, 3)].patrolRange
     const speed = patrolRange > 0 ? 24 : 0
 
     const dialogues = []
@@ -988,7 +1054,8 @@ function buildConfigFromForm() {
     npcs.push({ sprite, tileX, tileY, patrolRange, speed, dialogues })
   })
 
-  return { title, description, npcs }
+  const items = customItems.filter(Boolean).map(it => it.filename)
+  return { title, description, npcs, ...(items.length > 0 ? { items } : {}) }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1048,6 +1115,19 @@ let ghUsername = ''
     try {
       sessionStorage.removeItem('gh_pending_config')
       renderForm(JSON.parse(saved))
+
+      // Restore uploaded item images
+      const savedItems = sessionStorage.getItem('gh_pending_items')
+      sessionStorage.removeItem('gh_pending_items')
+      if (savedItems) {
+        JSON.parse(savedItems).forEach((item, slot) => {
+          if (!item) return
+          customItems[slot] = item
+          const btn = document.querySelector(`.item-slot-btn[data-slot="${slot}"]`)
+          if (btn) btn.innerHTML = `<img src="data:image/*;base64,${item.base64}" alt="${item.filename}">`
+        })
+      }
+
       goToStep(3)
     } catch(e) {}
   }
@@ -1085,7 +1165,10 @@ function showGhDisconnected() {
 
 document.getElementById('gh-connect-btn').addEventListener('click', () => {
   // Save form state before leaving — the OAuth redirect reloads the page
-  try { sessionStorage.setItem('gh_pending_config', JSON.stringify(buildConfigFromForm())) } catch(e) {}
+  try {
+    sessionStorage.setItem('gh_pending_config', JSON.stringify(buildConfigFromForm()))
+    sessionStorage.setItem('gh_pending_items', JSON.stringify(customItems))
+  } catch(e) {}
   const state   = encodeURIComponent(window.location.href.split('#')[0])
   const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&scope=repo&state=${state}`
   window.location.href = authUrl
@@ -1118,6 +1201,9 @@ async function deployToGitHub() {
 
     setStep('wait', 'done')
     setStep('upload', 'active')
+    for (const item of customItems.filter(Boolean)) {
+      await ghUploadFile(ghUsername, ghToken, `images/${item.filename}`, item.base64, { binary: true })
+    }
     await ghUploadFile(ghUsername, ghToken, 'config.js', configJs)
 
     setStep('upload', 'done')
@@ -1189,7 +1275,7 @@ async function ghWaitForFork(username, token) {
   throw new Error('Fork is taking too long. Wait a minute then try again, or fork manually at github.com.')
 }
 
-async function ghUploadFile(username, token, filePath, content) {
+async function ghUploadFile(username, token, filePath, content, opts = {}) {
   // Get existing SHA if the file already exists (needed for updates)
   let sha
   const check = await ghFetch(`/repos/${username}/${TEMPLATE_REPO}/contents/${filePath}`, token)
@@ -1200,7 +1286,8 @@ async function ghUploadFile(username, token, filePath, content) {
 
   const body = {
     message: 'Configure game via setup wizard',
-    content: btoa(unescape(encodeURIComponent(content))), // UTF-8 safe base64
+    // binary: content is already base64; text: encode to UTF-8 safe base64
+    content: opts.binary ? content : btoa(unescape(encodeURIComponent(content))),
   }
   if (sha) body.sha = sha
 

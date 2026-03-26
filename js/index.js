@@ -246,7 +246,8 @@ function resetCompletionProgress() {
 }
 
 function checkForCompletion() {
-  if (talkedNpcs.size >= 4 && collectedItems.size >= 3) {
+  const requiredItems = window.GAME_CONFIG?.items?.length || 3
+  if (talkedNpcs.size >= 4 && collectedItems.size >= requiredItems) {
     showGameComplete()
   }
 }
@@ -475,12 +476,14 @@ function animate() {
       player.hasHitEnemy = true
 
       if (monster.health <= 0) {
-          // Choose a random drop among R, Py, JS
-          const dropChoices = [
-            { imageSrc: './images/R_drop.png' },
-            { imageSrc: './images/Py_drop.png' },
-            { imageSrc: './images/JS_drop.png' },
-          ]
+          // Use custom items from config if provided, otherwise default to R, Py, JS
+          const dropChoices = (window.GAME_CONFIG?.items?.length > 0)
+            ? window.GAME_CONFIG.items.map(f => ({ imageSrc: './images/' + f }))
+            : [
+                { imageSrc: './images/R_drop.png' },
+                { imageSrc: './images/Py_drop.png' },
+                { imageSrc: './images/JS_drop.png' },
+              ]
           const choice = dropChoices[Math.floor(Math.random() * dropChoices.length)]
 
           pickups.push(
