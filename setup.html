@@ -475,9 +475,13 @@
 
       <!-- Connected -->
       <div id="gh-connected-section" style="display:none">
-        <p style="margin-bottom:14px; font-size:13px">
+        <p style="margin-bottom:10px; font-size:13px">
           ✓ Connected as <strong id="gh-username-display"></strong>
           &nbsp;<button class="secondary" id="gh-disconnect-btn" style="padding:3px 10px; font-size:12px">Disconnect</button>
+        </p>
+        <p style="font-size:12px; opacity:.6; margin-bottom:14px">
+          Your game will be published at:<br>
+          <strong id="gh-url-preview" style="opacity:.9; font-size:13px"></strong>
         </p>
         <button id="deploy-btn">Deploy to GitHub Pages →</button>
       </div>
@@ -492,10 +496,10 @@
       </div>
 
       <div id="success-box" style="display:none">
-        <p style="opacity:.7; font-size:13px">Your game is live at:</p>
+        <p style="opacity:.7; font-size:13px">Your game will be live at:</p>
         <a id="success-url" href="#" target="_blank" rel="noopener"></a>
-        <p style="opacity:.5; font-size:12px; margin-top:4px">
-          GitHub Pages may take 1–2 minutes to finish building.
+        <p style="opacity:.75; font-size:12px; margin-top:8px">
+          ⏳ GitHub Pages takes <strong>1–3 minutes</strong> to build. The link above won't work immediately — wait a moment then open it.
         </p>
       </div>
     </div>
@@ -869,8 +873,6 @@ function createNpcCard(idx, npc) {
   posRow.className = 'form-row'
 
   const fields = [
-    { label: 'Tile X', cls: 'tile-x', val: npc.tileX ?? DEFAULT_POSITIONS[Math.min(idx,3)].tileX, min: 1, max: 27 },
-    { label: 'Tile Y', cls: 'tile-y', val: npc.tileY ?? DEFAULT_POSITIONS[Math.min(idx,3)].tileY, min: 1, max: 27 },
     { label: 'Patrol px', cls: 'patrol-range', val: npc.patrolRange ?? DEFAULT_POSITIONS[Math.min(idx,3)].patrolRange, min: 0, max: 128 },
   ]
   fields.forEach(({ label: lbl, cls, val, min, max }) => {
@@ -969,8 +971,8 @@ function buildConfigFromForm() {
   document.querySelectorAll('.npc-card').forEach((card, i) => {
     const sprite = card.querySelector('.sprite-option.selected')?.dataset.sprite
       || SPRITES[Math.min(i, SPRITES.length - 1)]
-    const tileX = parseInt(card.querySelector('.tile-x').value) || DEFAULT_POSITIONS[Math.min(i, 3)].tileX
-    const tileY = parseInt(card.querySelector('.tile-y').value) || DEFAULT_POSITIONS[Math.min(i, 3)].tileY
+    const tileX = DEFAULT_POSITIONS[Math.min(i, 3)].tileX
+    const tileY = DEFAULT_POSITIONS[Math.min(i, 3)].tileY
     const patrolRange = parseInt(card.querySelector('.patrol-range').value) || 0
     const speed = patrolRange > 0 ? 24 : 0
 
@@ -1036,6 +1038,17 @@ let ghUsername = ''
   if (!m) return
   ghToken = m[1]
   history.replaceState(null, '', window.location.pathname + window.location.search)
+
+  // Restore form state saved before the OAuth redirect and jump straight to deploy
+  const saved = sessionStorage.getItem('gh_pending_config')
+  if (saved) {
+    try {
+      sessionStorage.removeItem('gh_pending_config')
+      renderForm(JSON.parse(saved))
+      goToStep(3)
+    } catch(e) {}
+  }
+
   fetchGhUsername()
 })()
 
@@ -1055,6 +1068,7 @@ function showGhConnected() {
   document.getElementById('gh-connect-section').style.display  = 'none'
   document.getElementById('gh-connected-section').style.display = 'block'
   document.getElementById('gh-username-display').textContent    = ghUsername
+  document.getElementById('gh-url-preview').textContent = `https://${ghUsername}.github.io/${TEMPLATE_REPO}`
 }
 
 function showGhDisconnected() {
@@ -1067,6 +1081,8 @@ function showGhDisconnected() {
 }
 
 document.getElementById('gh-connect-btn').addEventListener('click', () => {
+  // Save form state before leaving — the OAuth redirect reloads the page
+  try { sessionStorage.setItem('gh_pending_config', JSON.stringify(buildConfigFromForm())) } catch(e) {}
   const state   = encodeURIComponent(window.location.href.split('#')[0])
   const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&scope=repo&state=${state}`
   window.location.href = authUrl
