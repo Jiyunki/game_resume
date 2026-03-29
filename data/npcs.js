@@ -43,10 +43,10 @@ const NPC_DEFS = [
     speed: 24,
     spriteConfig: {
       animations: {
-        walkDown:  { x: 0, y: 0,  width: 16, height: 16, frameCount: 4, horizontal: true },
-        walkUp:    { x: 0, y: 16, width: 16, height: 16, frameCount: 4, horizontal: true },
-        walkLeft:  { x: 0, y: 16, width: 16, height: 16, frameCount: 4, horizontal: true },
-        walkRight: { x: 0, y: 0,  width: 16, height: 16, frameCount: 4, horizontal: true },
+        walkDown: { x: 0, y: 0, width: 16, height: 16, frameCount: 4 },
+        walkUp: { x: 16, y: 0, width: 16, height: 16, frameCount: 4 },
+        walkLeft: { x: 32, y: 0, width: 16, height: 16, frameCount: 4 },
+        walkRight: { x: 48, y: 0, width: 16, height: 16, frameCount: 4 },
       },
       frameWidth: 16,
       frameHeight: 16,
