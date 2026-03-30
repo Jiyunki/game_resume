@@ -368,6 +368,11 @@
       display: none;
     }
   </style>
+  <style>
+    #mic-btn { padding: 10px 13px; font-size: 15px; line-height: 1; }
+    #mic-btn.listening { background: rgba(255,80,80,0.18); color: #ff7070; border-color: rgba(255,80,80,0.3); }
+    #resume-parse-status { font-size: 12px; margin-top: 6px; opacity: .7; }
+  </style>
 </head>
 <body>
 <div class="wizard">
@@ -401,6 +406,13 @@
     </div>
     <div id="api-error" class="error-msg" style="display:none"></div>
 
+    <div class="card" style="margin-top:14px">
+      <label>Your Resume PDF <span style="opacity:.5;font-weight:normal">(optional)</span></label>
+      <input type="file" id="resume-file" accept=".pdf" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:5px; color:#fff; font-size:13px; padding:8px 10px; cursor:pointer;">
+      <div id="resume-parse-status"></div>
+      <p style="margin-top:8px"><small>Claude will read it as context. Also deployed as the in-game resume button.</small></p>
+    </div>
+
     <div class="btn-row">
       <button id="start-chat-btn">Start with AI →</button>
       <button class="secondary" id="skip-ai-btn">Skip AI — Use Template</button>
@@ -421,6 +433,7 @@
       <div id="chat-messages"></div>
       <div id="chat-input-row">
         <input type="text" id="chat-input" placeholder="Type your answer...">
+        <button id="mic-btn" class="secondary" title="Voice input">🎤</button>
         <button id="send-btn">Send</button>
       </div>
     </div>
@@ -610,13 +623,19 @@ const SYSTEM_PROMPT = `You are an assistant helping someone customize a "resume 
 
 Your goal is to collect information and write NPC dialogue that highlights the creator's experience and personality.
 
-Collect (conversationally, not all at once):
+Tone and formatting rules:
+- Write in plain conversational English. No markdown — no asterisks, no bold, no bullet points, no em dashes, no headers.
+- Keep your messages short and friendly, like a casual conversation.
+
+Collect (conversationally, one topic at a time):
 1. The creator's name
 2. A short game title (e.g. "Alex's World") and a 1-sentence description
 3. Up to 4 people — friends, colleagues, mentors — who can vouch for the creator. For each person get: their name + relationship, and 2-4 things they would say.
 
+If a resume was provided above, use it to skip ahead — pull the name, suggest a title, and propose characters based on real names and experiences. Still confirm with the user.
+
 Dialogue guidelines:
-- Each line: 1–2 short sentences, max ~120 characters
+- Each line: 1-2 short sentences, max ~120 characters
 - First-person perspective, referring to the creator by name
 - Highlight real experiences, skills, personality — conversational, NOT resume bullets
 
@@ -653,6 +672,106 @@ Start by greeting warmly and asking for the creator's name.`
 let apiKey = ''
 let conversationHistory = []
 let currentConfig = null
+let resumePdfBase64 = ''
+let resumeText = ''
+let activeSystemPrompt = SYSTEM_PROMPT
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resume upload + PDF parsing
+// ─────────────────────────────────────────────────────────────────────────────
+;(function () {
+  const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+  const WORKER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+  let pdfJsReady = false
+
+  function loadPdfJs(cb) {
+    if (pdfJsReady) { cb(); return }
+    const s = document.createElement('script')
+    s.src = PDFJS_CDN
+    s.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN
+      pdfJsReady = true
+      cb()
+    }
+    document.head.appendChild(s)
+  }
+
+  document.getElementById('resume-file').addEventListener('change', function () {
+    const file = this.files[0]
+    if (!file) return
+    const statusEl = document.getElementById('resume-parse-status')
+    statusEl.textContent = 'Reading...'
+
+    const arrayReader = new FileReader()
+    arrayReader.onload = async (ev) => {
+      const arrayBuffer = ev.target.result
+      // Store base64 for GitHub deployment
+      resumePdfBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+
+      loadPdfJs(async () => {
+        try {
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+          let text = ''
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i)
+            const content = await page.getTextContent()
+            text += content.items.map(s => s.str).join(' ') + '\n'
+          }
+          resumeText = text.trim().slice(0, 4000) // cap to keep prompt size reasonable
+          statusEl.textContent = `Parsed ${pdf.numPages} page${pdf.numPages !== 1 ? 's' : ''} successfully`
+          statusEl.style.color = '#4ade80'
+        } catch (e) {
+          statusEl.textContent = 'Could not extract text — PDF will still be deployed'
+          statusEl.style.color = ''
+        }
+      })
+    }
+    arrayReader.readAsArrayBuffer(file)
+  })
+})()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Speech recognition (Web Speech API — free, Chrome/Edge)
+// ─────────────────────────────────────────────────────────────────────────────
+;(function () {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  const micBtn = document.getElementById('mic-btn')
+  if (!SpeechRecognition) { micBtn.style.display = 'none'; return }
+
+  let recognition = null
+
+  micBtn.addEventListener('click', () => {
+    if (recognition) {
+      recognition.stop()
+      return
+    }
+    recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => {
+      micBtn.classList.add('listening')
+      micBtn.title = 'Stop recording'
+    }
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript
+      const input = document.getElementById('chat-input')
+      input.value = (input.value + ' ' + transcript).trim()
+    }
+    recognition.onend = () => {
+      recognition = null
+      micBtn.classList.remove('listening')
+      micBtn.title = 'Voice input'
+    }
+    recognition.onerror = () => {
+      recognition = null
+      micBtn.classList.remove('listening')
+      micBtn.title = 'Voice input'
+    }
+    recognition.start()
+  })
+})()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step navigation
@@ -719,6 +838,10 @@ document.getElementById('chat-to-form-btn').addEventListener('click', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 async function startChat() {
   conversationHistory = []
+  activeSystemPrompt = resumeText
+    ? SYSTEM_PROMPT + `\n\nHere is the creator's resume for context:\n\n${resumeText}`
+    : SYSTEM_PROMPT
+
   const kickoff = { role: 'user', content: "Hello! Let's get started." }
   conversationHistory.push(kickoff)
 
@@ -747,18 +870,17 @@ async function callClaude(messages) {
   container.scrollTop = container.scrollHeight
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-ipc': 'true',
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1200,
-        system: SYSTEM_PROMPT,
+        system: activeSystemPrompt,
         messages,
       })
     })
@@ -1131,6 +1253,10 @@ let ghUsername = ''
       renderForm(JSON.parse(saved))
 
       // Restore uploaded item images
+      const savedResume = sessionStorage.getItem('gh_pending_resume')
+      sessionStorage.removeItem('gh_pending_resume')
+      if (savedResume) resumePdfBase64 = savedResume
+
       const savedItems = sessionStorage.getItem('gh_pending_items')
       sessionStorage.removeItem('gh_pending_items')
       if (savedItems) {
@@ -1182,6 +1308,7 @@ document.getElementById('gh-connect-btn').addEventListener('click', () => {
   try {
     sessionStorage.setItem('gh_pending_config', JSON.stringify(buildConfigFromForm()))
     sessionStorage.setItem('gh_pending_items', JSON.stringify(customItems))
+    if (resumePdfBase64) sessionStorage.setItem('gh_pending_resume', resumePdfBase64)
   } catch(e) {}
   const state   = encodeURIComponent(window.location.href.split('#')[0])
   const authUrl = `https://github.com/login/oauth/authorize?client_id=${OAUTH_CLIENT_ID}&scope=repo&state=${state}`
@@ -1217,6 +1344,9 @@ async function deployToGitHub() {
     setStep('upload', 'active')
     for (const item of customItems.filter(Boolean)) {
       await ghUploadFile(ghUsername, ghToken, `images/${item.filename}`, item.base64, { binary: true })
+    }
+    if (resumePdfBase64) {
+      await ghUploadFile(ghUsername, ghToken, 'resume.pdf', resumePdfBase64, { binary: true })
     }
     await ghUploadFile(ghUsername, ghToken, 'config.js', configJs)
 
