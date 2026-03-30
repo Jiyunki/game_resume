@@ -498,6 +498,15 @@
       </div>
     </div>
 
+    <div class="section-title" style="margin-top:20px">Resume PDF</div>
+    <div class="card">
+      <p style="font-size:12px; opacity:.6; margin-bottom:12px">
+        This file is linked to the resume button in the top-right corner of the game. Required for the button to work.
+      </p>
+      <input type="file" id="resume-file-form" accept=".pdf" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:5px; color:#fff; font-size:13px; padding:8px 10px; cursor:pointer;">
+      <div id="resume-form-status" style="font-size:12px; margin-top:6px; opacity:.7;"></div>
+    </div>
+
     <div class="btn-row">
       <button id="goto-download-btn">Download Config →</button>
       <button class="secondary" id="back-to-chat-btn">← Back to Chat</button>
@@ -729,6 +738,25 @@ let activeSystemPrompt = SYSTEM_PROMPT
     arrayReader.readAsArrayBuffer(file)
   })
 })()
+
+// Step 3 resume upload (same state, no PDF parsing needed here)
+document.getElementById('resume-file-form').addEventListener('change', function () {
+  const file = this.files[0]
+  if (!file) return
+  const statusEl = document.getElementById('resume-form-status')
+  statusEl.textContent = 'Reading...'
+  statusEl.style.color = ''
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    resumePdfBase64 = btoa(String.fromCharCode(...new Uint8Array(ev.target.result)))
+    statusEl.textContent = `${file.name} ready`
+    statusEl.style.color = '#4ade80'
+    // Sync back to step-1 status if visible
+    const s1 = document.getElementById('resume-parse-status')
+    if (s1) { s1.textContent = `${file.name} ready`; s1.style.color = '#4ade80' }
+  }
+  reader.readAsArrayBuffer(file)
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Speech recognition (Web Speech API — free, Chrome/Edge)
