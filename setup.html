@@ -372,6 +372,10 @@
     #mic-btn { padding: 10px 13px; font-size: 15px; line-height: 1; }
     #mic-btn.listening { background: rgba(255,80,80,0.18); color: #ff7070; border-color: rgba(255,80,80,0.3); }
     #resume-parse-status { font-size: 12px; margin-top: 6px; opacity: .7; }
+    #resume-ref-panel { display: none; margin-top: 12px; }
+    #resume-ref-toggle { background: transparent; color: rgba(255,255,255,0.5); border: 1px dashed rgba(255,255,255,0.18); padding: 6px 12px; font-size: 12px; font-weight: normal; width: 100%; text-align: left; }
+    #resume-ref-toggle:hover { color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.35); box-shadow: none; transform: none; }
+    #resume-ref-text { margin-top: 8px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; max-height: 260px; overflow-y: auto; color: #ccc; }
   </style>
 </head>
 <body>
@@ -505,6 +509,10 @@
       </p>
       <input type="file" id="resume-file-form" accept=".pdf" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:5px; color:#fff; font-size:13px; padding:8px 10px; cursor:pointer;">
       <div id="resume-form-status" style="font-size:12px; margin-top:6px; opacity:.7;"></div>
+      <div id="resume-ref-panel">
+        <button id="resume-ref-toggle">▶ Show extracted text</button>
+        <div id="resume-ref-text" style="display:none"></div>
+      </div>
     </div>
 
     <div class="btn-row">
@@ -688,24 +696,31 @@ let activeSystemPrompt = SYSTEM_PROMPT
 // ─────────────────────────────────────────────────────────────────────────────
 // Resume upload + PDF parsing
 // ─────────────────────────────────────────────────────────────────────────────
-;(function () {
-  const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
-  const WORKER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-  let pdfJsReady = false
-
-  function loadPdfJs(cb) {
-    if (pdfJsReady) { cb(); return }
-    const s = document.createElement('script')
-    s.src = PDFJS_CDN
-    s.onload = () => {
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN
-      pdfJsReady = true
-      cb()
-    }
-    document.head.appendChild(s)
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
   }
+  return btoa(binary)
+}
+const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+const WORKER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+let pdfJsReady = false
 
-  document.getElementById('resume-file').addEventListener('change', function () {
+function loadPdfJs(cb) {
+  if (pdfJsReady) { cb(); return }
+  const s = document.createElement('script')
+  s.src = PDFJS_CDN
+  s.onload = () => {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN
+    pdfJsReady = true
+    cb()
+  }
+  document.head.appendChild(s)
+}
+
+document.getElementById('resume-file').addEventListener('change', function () {
     const file = this.files[0]
     if (!file) return
     const statusEl = document.getElementById('resume-parse-status')
@@ -715,7 +730,7 @@ let activeSystemPrompt = SYSTEM_PROMPT
     arrayReader.onload = async (ev) => {
       const arrayBuffer = ev.target.result
       // Store base64 for GitHub deployment
-      resumePdfBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+      resumePdfBase64 = arrayBufferToBase64(arrayBuffer)
 
       loadPdfJs(async () => {
         try {
@@ -737,26 +752,75 @@ let activeSystemPrompt = SYSTEM_PROMPT
     }
     arrayReader.readAsArrayBuffer(file)
   })
-})()
+})
 
-// Step 3 resume upload (same state, no PDF parsing needed here)
+// Step 3 resume upload — parse PDF, pre-fill form, show reference text
 document.getElementById('resume-file-form').addEventListener('change', function () {
   const file = this.files[0]
   if (!file) return
-  const statusEl = document.getElementById('resume-form-status')
-  statusEl.textContent = 'Reading...'
+  const statusEl  = document.getElementById('resume-form-status')
+  const panel     = document.getElementById('resume-ref-panel')
+  const refText   = document.getElementById('resume-ref-text')
+  const refToggle = document.getElementById('resume-ref-toggle')
+  statusEl.textContent = 'Parsing...'
   statusEl.style.color = ''
+  panel.style.display = 'none'
+
   const reader = new FileReader()
   reader.onload = (ev) => {
-    resumePdfBase64 = btoa(String.fromCharCode(...new Uint8Array(ev.target.result)))
-    statusEl.textContent = `${file.name} ready`
-    statusEl.style.color = '#4ade80'
-    // Sync back to step-1 status if visible
-    const s1 = document.getElementById('resume-parse-status')
-    if (s1) { s1.textContent = `${file.name} ready`; s1.style.color = '#4ade80' }
+    const buffer = ev.target.result
+    resumePdfBase64 = arrayBufferToBase64(buffer)
+
+    loadPdfJs(async () => {
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise
+        let text = ''
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i)
+          const content = await page.getTextContent()
+          text += content.items.map(s => s.str).join(' ') + '\n'
+        }
+        resumeText = text.trim()
+
+        // Pre-fill title with detected name if title is empty
+        const titleInput = document.getElementById('form-title')
+        if (!titleInput.value.trim()) {
+          const name = extractNameFromResume(resumeText)
+          if (name) titleInput.value = `${name}'s Resume Game`
+        }
+
+        // Show reference panel
+        refText.textContent = resumeText
+        panel.style.display = 'block'
+        statusEl.textContent = `${pdf.numPages} page${pdf.numPages !== 1 ? 's' : ''} parsed — title pre-filled, text available below`
+        statusEl.style.color = '#4ade80'
+      } catch (e) {
+        statusEl.textContent = `${file.name} ready (text extraction failed)`
+        statusEl.style.color = '#4ade80'
+      }
+    })
   }
   reader.readAsArrayBuffer(file)
 })
+
+document.getElementById('resume-ref-toggle').addEventListener('click', function () {
+  const refText = document.getElementById('resume-ref-text')
+  const open = refText.style.display !== 'none'
+  refText.style.display = open ? 'none' : 'block'
+  this.textContent = (open ? '▶' : '▼') + ' Show extracted text'
+})
+
+function extractNameFromResume(text) {
+  // Try the first non-empty line that looks like a name (2-4 words, no special chars, not all-caps header)
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  for (const line of lines.slice(0, 8)) {
+    const words = line.split(/\s+/)
+    if (words.length >= 2 && words.length <= 4 && /^[A-Z][a-z]/.test(line) && !/[@|•:\/]/.test(line)) {
+      return line
+    }
+  }
+  return ''
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Speech recognition (Web Speech API — free, Chrome/Edge)
