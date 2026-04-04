@@ -400,11 +400,16 @@
     </p>
 
     <div class="card">
-      <label>Your Claude API Key</label>
+      <label>AI Provider</label>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button type="button" id="provider-claude" onclick="setProvider('claude')" style="flex:1;background:#4ade80;color:#000;border:none;border-radius:6px;padding:8px 12px;cursor:pointer;font-size:13px">Claude (Haiku)</button>
+        <button type="button" id="provider-openai" onclick="setProvider('openai')" style="flex:1;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.18);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:13px">ChatGPT (GPT-4o mini)</button>
+      </div>
+      <label id="api-key-label">Your Claude API Key</label>
       <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
       <p style="margin-top:8px">
         <small>Used only in your browser — never stored or sent anywhere else.
-          Get a key at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>
+          Get a key at <a id="api-key-link" href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>
         </small>
       </p>
     </div>
@@ -414,7 +419,7 @@
       <label>Your Resume PDF <span style="opacity:.5;font-weight:normal">(optional)</span></label>
       <input type="file" id="resume-file" accept=".pdf" style="width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.14); border-radius:5px; color:#fff; font-size:13px; padding:8px 10px; cursor:pointer;">
       <div id="resume-parse-status"></div>
-      <p style="margin-top:8px"><small>Claude will read it as context. Also deployed as the in-game resume button.</small></p>
+      <p style="margin-top:8px"><small>The AI will read it as context. Also deployed as the in-game resume button.</small></p>
     </div>
 
     <div class="btn-row">
@@ -427,9 +432,9 @@
        Step 2 — Chat
   ──────────────────────────────────────────────── -->
   <div class="step" id="step-chat">
-    <h1>Tell Claude about yourself</h1>
+    <h1>Tell the AI about yourself</h1>
     <p style="opacity:.65; margin: 8px 0 16px; font-size:13px">
-      Claude will ask questions and write NPC dialogues for you.
+      The AI will ask questions and write NPC dialogues for you.
       Answer as much or as little as you like.
     </p>
 
@@ -687,6 +692,7 @@ Start by greeting warmly and asking for the creator's name.`
 // State
 // ─────────────────────────────────────────────────────────────────────────────
 let apiKey = ''
+let apiProvider = 'claude'
 let conversationHistory = []
 let currentConfig = null
 let resumePdfBase64 = ''
@@ -892,8 +898,13 @@ document.getElementById('start-chat-btn').addEventListener('click', async () => 
     errEl.style.display = 'block'
     return
   }
-  if (!key.startsWith('sk-ant-')) {
-    errEl.textContent = 'API key should start with "sk-ant-". Check console.anthropic.com.'
+  if (apiProvider === 'claude' && !key.startsWith('sk-ant-')) {
+    errEl.textContent = 'Claude API key should start with "sk-ant-". Check console.anthropic.com.'
+    errEl.style.display = 'block'
+    return
+  }
+  if (apiProvider === 'openai' && !key.startsWith('sk-')) {
+    errEl.textContent = 'OpenAI API key should start with "sk-". Check platform.openai.com.'
     errEl.style.display = 'block'
     return
   }
@@ -936,7 +947,7 @@ async function startChat() {
   const kickoff = { role: 'user', content: "Hello! Let's get started." }
   conversationHistory.push(kickoff)
 
-  const reply = await callClaude(conversationHistory)
+  const reply = await callAI(conversationHistory)
   if (reply) addChatMsg('assistant', reply)
 }
 
@@ -948,6 +959,67 @@ function addChatMsg(role, text) {
   container.appendChild(div)
   container.scrollTop = container.scrollHeight
   return div
+}
+
+function setProvider(provider) {
+  apiProvider = provider
+  const isOpenAI = provider === 'openai'
+  document.getElementById('provider-claude').style.background = isOpenAI ? 'rgba(255,255,255,0.08)' : '#4ade80'
+  document.getElementById('provider-claude').style.color = isOpenAI ? '#fff' : '#000'
+  document.getElementById('provider-claude').style.border = isOpenAI ? '1px solid rgba(255,255,255,0.18)' : 'none'
+  document.getElementById('provider-openai').style.background = isOpenAI ? '#4ade80' : 'rgba(255,255,255,0.08)'
+  document.getElementById('provider-openai').style.color = isOpenAI ? '#000' : '#fff'
+  document.getElementById('provider-openai').style.border = isOpenAI ? 'none' : '1px solid rgba(255,255,255,0.18)'
+  document.getElementById('api-key-label').textContent = isOpenAI ? 'Your OpenAI API Key' : 'Your Claude API Key'
+  document.getElementById('api-key').placeholder = isOpenAI ? 'sk-...' : 'sk-ant-...'
+  document.getElementById('api-key-link').href = isOpenAI ? 'https://platform.openai.com/api-keys' : 'https://console.anthropic.com'
+  document.getElementById('api-key-link').textContent = isOpenAI ? 'platform.openai.com' : 'console.anthropic.com'
+}
+
+async function callAI(messages) {
+  return apiProvider === 'openai' ? callOpenAI(messages) : callClaude(messages)
+}
+
+async function callOpenAI(messages) {
+  const container = document.getElementById('chat-messages')
+  const typingDiv = document.createElement('div')
+  typingDiv.className = 'msg assistant typing'
+  typingDiv.textContent = '…'
+  container.appendChild(typingDiv)
+  container.scrollTop = container.scrollHeight
+
+  try {
+    const oaiMessages = [{ role: 'system', content: activeSystemPrompt }, ...messages]
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        max_tokens: 1200,
+        messages: oaiMessages,
+      })
+    })
+
+    typingDiv.remove()
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.error?.message || `API error ${res.status}`)
+    }
+
+    const data = await res.json()
+    const text = (data.choices[0]?.message?.content || '').trim()
+    conversationHistory.push({ role: 'assistant', content: text })
+    return text
+
+  } catch (e) {
+    typingDiv.remove()
+    addChatMsg('assistant', `Error: ${e.message}`)
+    return null
+  }
 }
 
 async function callClaude(messages) {
@@ -1009,7 +1081,7 @@ async function sendUserMessage() {
   addChatMsg('user', text)
   conversationHistory.push({ role: 'user', content: text })
 
-  const reply = await callClaude(conversationHistory)
+  const reply = await callAI(conversationHistory)
   if (reply) {
     addChatMsg('assistant', reply)
     tryExtractConfig(reply)
@@ -1021,7 +1093,7 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
   addChatMsg('user', prompt)
   conversationHistory.push({ role: 'user', content: prompt })
 
-  const reply = await callClaude(conversationHistory)
+  const reply = await callAI(conversationHistory)
   if (reply) {
     addChatMsg('assistant', reply)
     tryExtractConfig(reply)
