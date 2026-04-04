@@ -369,8 +369,6 @@
     }
   </style>
   <style>
-    #mic-btn { padding: 10px 13px; font-size: 15px; line-height: 1; }
-    #mic-btn.listening { background: rgba(255,80,80,0.18); color: #ff7070; border-color: rgba(255,80,80,0.3); }
     #resume-parse-status { font-size: 12px; margin-top: 6px; opacity: .7; }
     #resume-ref-panel { display: none; margin-top: 12px; }
     #resume-ref-toggle { background: transparent; color: rgba(255,255,255,0.5); border: 1px dashed rgba(255,255,255,0.18); padding: 6px 12px; font-size: 12px; font-weight: normal; width: 100%; text-align: left; }
@@ -442,8 +440,7 @@
       <div id="chat-messages"></div>
       <div id="chat-input-row">
         <input type="text" id="chat-input" placeholder="Type your answer...">
-        <button id="mic-btn" class="secondary" title="Voice input">🎤</button>
-        <button id="send-btn">Send</button>
+<button id="send-btn">Send</button>
       </div>
     </div>
 
@@ -826,62 +823,6 @@ function extractNameFromResume(text) {
   return ''
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Speech recognition (Web Speech API — free, Chrome/Edge)
-// ─────────────────────────────────────────────────────────────────────────────
-;(function () {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  const micBtn = document.getElementById('mic-btn')
-  if (!SpeechRecognition) { micBtn.style.display = 'none'; return }
-
-  let recognition = null
-
-  micBtn.addEventListener('click', () => {
-    if (recognition) {
-      recognition.stop()
-      return
-    }
-    recognition = new SpeechRecognition()
-    recognition.continuous = false
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    recognition.onstart = () => {
-      micBtn.classList.add('listening')
-      micBtn.title = 'Stop recording'
-    }
-    recognition.onresult = (e) => {
-      const transcript = e.results[0][0].transcript
-      const input = document.getElementById('chat-input')
-      input.value = (input.value + ' ' + transcript).trim()
-    }
-    recognition.onend = () => {
-      recognition = null
-      micBtn.classList.remove('listening')
-      micBtn.textContent = '🎤'
-      micBtn.title = 'Voice input'
-    }
-    recognition.onerror = (e) => {
-      recognition = null
-      micBtn.classList.remove('listening')
-      micBtn.textContent = '🎤'
-      micBtn.title = 'Voice input'
-      const msgs = {
-        'not-allowed': 'Microphone permission denied. Allow mic access in your browser settings.',
-        'no-speech': 'No speech detected. Try speaking louder or closer to the mic.',
-        'network': 'Network error — speech recognition requires an internet connection.',
-        'aborted': '',
-      }
-      const msg = msgs[e.error] ?? `Speech error: ${e.error}`
-      if (msg) {
-        const input = document.getElementById('chat-input')
-        input.placeholder = msg
-        setTimeout(() => { input.placeholder = 'Type your answer...' }, 4000)
-      }
-    }
-    recognition.start()
-  })
-})()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step navigation
