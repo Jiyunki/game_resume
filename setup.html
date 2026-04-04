@@ -455,7 +455,6 @@
       <button class="secondary" id="generate-btn">Generate Config Now →</button>
       <button class="secondary" id="chat-to-form-btn">← Edit form manually</button>
     </div>
-    <small style="line-height:1.5; display:block; margin-top:8px">or wait — Claude generates it automatically when it has enough info</small>
   </div>
 
   <!-- ────────────────────────────────────────────────
@@ -859,12 +858,26 @@ function extractNameFromResume(text) {
     recognition.onend = () => {
       recognition = null
       micBtn.classList.remove('listening')
+      micBtn.textContent = '🎤'
       micBtn.title = 'Voice input'
     }
-    recognition.onerror = () => {
+    recognition.onerror = (e) => {
       recognition = null
       micBtn.classList.remove('listening')
+      micBtn.textContent = '🎤'
       micBtn.title = 'Voice input'
+      const msgs = {
+        'not-allowed': 'Microphone permission denied. Allow mic access in your browser settings.',
+        'no-speech': 'No speech detected. Try speaking louder or closer to the mic.',
+        'network': 'Network error — speech recognition requires an internet connection.',
+        'aborted': '',
+      }
+      const msg = msgs[e.error] ?? `Speech error: ${e.error}`
+      if (msg) {
+        const input = document.getElementById('chat-input')
+        input.placeholder = msg
+        setTimeout(() => { input.placeholder = 'Type your answer...' }, 4000)
+      }
     }
     recognition.start()
   })
